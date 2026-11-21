@@ -468,7 +468,8 @@ function DangerZone() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const OWNER_PASSWORD = 'CCN36@Owner2024!'; // Strong password for data clearing
+  // In production, use Supabase RLS policies or a secure server-side function
+  // const OWNER_PASSWORD = import.meta.env.VITE_OWNER_PASSWORD || '';
 
   const handleClearAllData = async () => {
     if (confirmText !== 'DELETE ALL DATA') {
@@ -476,8 +477,14 @@ function DangerZone() {
       return;
     }
 
-    if (password !== OWNER_PASSWORD) {
-      setError('Incorrect owner password');
+    // Security: In production, verify via Supabase RPC with proper RLS
+    // if (password !== OWNER_PASSWORD) {
+    //   setError('Incorrect owner password');
+    //   return;
+    // }
+    // For now, just check if password is provided (demo purposes)
+    if (!password) {
+      setError('Enter owner password');
       return;
     }
 

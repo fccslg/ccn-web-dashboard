@@ -1,48 +1,138 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { formatINR, formatPortalCustomerId, toPaise } from '../shared';
+import { formatINR, formatPortalCustomerId, type Paise } from '../shared';
+import { getSupabaseClient, getCurrentOrgId } from '../shared/api/supabase';
+import type { Database } from '../shared/api/database.types';
 
-// Simulated large dataset
-const MOCK_DATA = Array.from({ length: 1247 }).map((_, i) => ({
-  id: String(i),
-  portalId: String(100 + i),
-  name: `Customer ${i + 1}`,
-  mobile: `983200${String(i).padStart(4, '0')}`,
-  location: ['BC Colony', 'Janata Nagar', 'W. Ashram'][i % 3],
-  status: 'active' as const,
-  billAmount: toPaise(Math.random() * 50000),
-  due: toPaise(Math.random() * 10000 - 5000),
-}));
+type CustomerRow = Database['public']['Tables']['customers']['Row'];
+type BillingRecordRow = Database['public']['Tables']['billing_records']['Row'];
+
+interface CustomerWithDue {
+  id: string;
+  portalId: string;
+  name: string;
+  mobile: string | null;
+  location: string | null;
+  status: string;
+  due: Paise;
+}
 
 export function Customers() {
   const [search, setSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
-  const [sortColumn, setSortColumn] = useState<keyof typeof MOCK_DATA[0] | null>(null);
+  const [sortColumn, setSortColumn] = useState<keyof CustomerWithDue | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [allCustomers, setAllCustomers] = useState<CustomerWithDue[]>([]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Fetch customers from Supabase
+  useEffect(() => {
+    async function fetchCustomers() {
+      try {
+        setLoading(true);
+        const sb = getSupabaseClient();
+
+        // Get organization ID
+        const orgId = await getCurrentOrgId();
+        if (!orgId) {
+          throw new Error('No organization found for current user');
+        }
+
+        // Fetch all customers for this organization
+        const { data: customers, error: custError } = await sb
+          .from('customers')
+          .select('id, portal_customer_id, name, mobile, location, status')
+          .eq('organization_id', orgId)
+          .eq('status', 'active')
+          .order('portal_customer_id', { ascending: true });
+
+        if (custError) throw custError;
+
+        // For each customer, get their active account and latest billing record
+        // to calculate current due
+        const customersWithDue: CustomerWithDue[] = [];
+
+        for (const cust of (customers as CustomerRow[]) || []) {
+          // Get customer's active account
+          const { data: accounts } = await sb
+            .from('customer_accounts')
+            .select('id')
+            .eq('customer_id', cust.id)
+            .eq('status', 'active')
+            .limit(1);
+
+          type AccountRow = { id: string };
+          let due: Paise = 0;
+
+          if (accounts && accounts.length > 0) {
+            const accountId = (accounts[0] as AccountRow).id;
+
+            // Get latest billing record for this account
+            const { data: billingRecords } = await sb
+              .from('billing_records')
+              .select('total_due')
+              .eq('customer_account_id', accountId)
+              .order('billing_month', { ascending: false })
+              .limit(1);
+
+            if (billingRecords && billingRecords.length > 0) {
+              due = (billingRecords[0] as BillingRecordRow).total_due as Paise ?? 0;
+            }
+          }
+
+          customersWithDue.push({
+            id: cust.id,
+            portalId: cust.portal_customer_id,
+            name: cust.name,
+            mobile: cust.mobile,
+            location: cust.location,
+            status: cust.status,
+            due,
+          });
+        }
+
+        setAllCustomers(customersWithDue);
+      } catch (err) {
+        console.error('Failed to fetch customers:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load customers');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCustomers();
+  }, []);
+
   // Filtered data based on search
   const filtered = useMemo(() => {
-    return MOCK_DATA.filter(c =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
+    if (!search) return allCustomers;
+    const lowerSearch = search.toLowerCase();
+    return allCustomers.filter(c =>
+      c.name.toLowerCase().includes(lowerSearch) ||
       c.portalId.includes(search) ||
-      c.mobile.includes(search)
+      c.mobile?.includes(search)
     );
-  }, [search]);
+  }, [search, allCustomers]);
 
   // Sorted data based on column and direction
   const sorted = useMemo(() => {
     if (!sortColumn) return filtered;
     const sortedArr = [...filtered];
     sortedArr.sort((a, b) => {
-      let aVal = a[sortColumn];
-      let bVal = b[sortColumn];
-      // For numeric values stored as Paise (number) or strings
-      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      const aVal = a[sortColumn] ?? '';
+      const bVal = b[sortColumn] ?? '';
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        const aLower = aVal.toLowerCase();
+        const bLower = bVal.toLowerCase();
+        if (aLower < bLower) return sortAsc ? -1 : 1;
+        if (aLower > bLower) return sortAsc ? 1 : -1;
+        return 0;
+      }
       if (aVal < bVal) return sortAsc ? -1 : 1;
       if (aVal > bVal) return sortAsc ? 1 : -1;
       return 0;
@@ -64,7 +154,7 @@ export function Customers() {
     if (node) observer.current.observe(node);
   }, [visibleCount, sorted.length]);
 
-  const handleSort = (col: keyof typeof MOCK_DATA[0]) => {
+  const handleSort = (col: keyof CustomerWithDue) => {
     if (sortColumn === col) {
       setSortAsc(!sortAsc);
     } else {
@@ -75,10 +165,49 @@ export function Customers() {
     setVisibleCount(20);
   };
 
-  const sortIndicator = (col: keyof typeof MOCK_DATA[0]) => {
+  const sortIndicator = (col: keyof CustomerWithDue) => {
     if (sortColumn !== col) return null;
     return sortAsc ? ' ▲' : ' ▼';
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+            <p className="text-gray-500 mt-1">Loading customers...</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+        </div>
+        <Card className="border-red-200">
+          <CardContent className="p-6 text-center text-red-600">
+            <p className="font-medium">Failed to load customers</p>
+            <p className="text-sm mt-2">{error}</p>
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -123,8 +252,8 @@ export function Customers() {
                   >
                     <td className="px-6 py-4 text-sm font-mono">{formatPortalCustomerId(c.portalId)}</td>
                     <td className="px-6 py-4 font-medium">{c.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{c.mobile}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{c.location}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{c.mobile || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{c.location || '-'}</td>
                     <td className="px-6 py-4 text-sm text-right font-medium {c.due < 0 ? 'text-red-600' : c.due > 0 ? 'text-green-600' : 'text-gray-900'}">
                       {formatINR(Math.abs(c.due))}
                     </td>
