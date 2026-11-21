@@ -853,7 +853,7 @@ export function Customers() {
 
       {/* Import Modal */}
       {importModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid blue', outlineOffset: '-3px' }}>
+        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid blue', outlineOffset: '-3px', backgroundColor: 'rgba(0,0,255,0.1)' }}>
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={() => setImportModalOpen(false)} />
             <Card className="relative w-full max-w-3xl max-h-[80vh] overflow-hidden">
@@ -988,7 +988,7 @@ export function Customers() {
 
       {/* Add Customer Modal */}
       {addCustomerModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid red', outlineOffset: '-3px' }}>
+        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid red', outlineOffset: '-3px', backgroundColor: 'rgba(255,0,0,0.1)' }}>
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={() => setAddCustomerModalOpen(false)} />
             <Card className="relative w-full max-w-md">
