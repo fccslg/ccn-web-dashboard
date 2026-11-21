@@ -84,6 +84,18 @@ export function Customers() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Add Customer modal state
+  const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
+  const [newCustomerPortalId, setNewCustomerPortalId] = useState('');
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerMobile, setNewCustomerMobile] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
+  const [newCustomerLocation, setNewCustomerLocation] = useState('');
+  const [newCustomerCableRefId, setNewCustomerCableRefId] = useState('');
+  const [newCustomerInternetRefId, setNewCustomerInternetRefId] = useState('');
+  const [addCustomerLoading, setAddCustomerLoading] = useState(false);
+  const [addCustomerError, setAddCustomerError] = useState<string | null>(null);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { currentOrg } = useAuth();
 
@@ -423,6 +435,111 @@ export function Customers() {
     return sortAsc ? ' ▲' : ' ▼';
   };
 
+  const handleAddCustomer = async () => {
+    if (!newCustomerName || !newCustomerPortalId) {
+      setAddCustomerError('Name and Portal ID are required');
+      return;
+    }
+
+    if (!currentOrg) {
+      setAddCustomerError('No organization selected');
+      return;
+    }
+
+    setAddCustomerLoading(true);
+    setAddCustomerError(null);
+
+    try {
+      const sb = getSupabaseClient();
+      const orgId = currentOrg.organization.id;
+
+      // Check if portal ID already exists for this org
+      const { data: existing } = await sb
+        .from('customers')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('portal_customer_id', newCustomerPortalId.trim().toUpperCase())
+        .single();
+
+      if (existing) {
+        setAddCustomerError('Customer with this ID already exists');
+        return;
+      }
+
+      // Create the customer
+      await sb.from('customers').insert({
+        organization_id: orgId,
+        portal_customer_id: newCustomerPortalId.trim().toUpperCase(),
+        name: newCustomerName.trim(),
+        mobile: newCustomerMobile.trim() || null,
+        address: newCustomerAddress.trim() || null,
+        location: newCustomerLocation.trim() || null,
+        cable_ref_id: newCustomerCableRefId.trim() || null,
+        internet_ref_id: newCustomerInternetRefId.trim() || null,
+        status: 'active',
+      } as any);
+
+      // Refresh customer list
+      const { data: customers } = await sb
+        .from('customers')
+        .select('id, portal_customer_id, name, mobile, location, status')
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .order('portal_customer_id', { ascending: true });
+
+      // Recalculate dues for refreshed list
+      const customersWithDue: CustomerWithDue[] = [];
+      for (const cust of (customers as CustomerRow[]) || []) {
+        const { data: accounts } = await sb
+          .from('customer_accounts')
+          .select('id')
+          .eq('customer_id', cust.id)
+          .eq('status', 'active')
+          .limit(1);
+
+        let due: Paise = 0;
+
+        if (accounts && accounts.length > 0) {
+          const accountId = accounts[0] as any;
+          const { data: billingRecords } = await sb
+            .from('billing_records')
+            .select('total_due')
+            .eq('customer_account_id', accountId.id)
+            .order('billing_month', { ascending: false })
+            .limit(1);
+
+          if (billingRecords && billingRecords.length > 0) {
+            due = (billingRecords[0] as BillingRecordRow).total_due as Paise ?? 0;
+          }
+        }
+
+        customersWithDue.push({
+          id: cust.id,
+          portalId: cust.portal_customer_id,
+          name: cust.name,
+          mobile: cust.mobile,
+          location: cust.location,
+          status: cust.status,
+          due,
+        });
+      }
+
+      setAllCustomers(customersWithDue);
+      setAddCustomerModalOpen(false);
+      setNewCustomerPortalId('');
+      setNewCustomerName('');
+      setNewCustomerMobile('');
+      setNewCustomerAddress('');
+      setNewCustomerLocation('');
+      setNewCustomerCableRefId('');
+      setNewCustomerInternetRefId('');
+    } catch (err: any) {
+      setAddCustomerError(err?.message || 'Failed to create customer');
+    } finally {
+      setAddCustomerLoading(false);
+    }
+  };
+
   const downloadSelectedReport = () => {
     const selected = sorted.filter(c => selectedIds.has(c.id));
     if (selected.length === 0) return;
@@ -585,7 +702,7 @@ export function Customers() {
             <h3 className="font-semibold text-gray-900 mb-2">No customers yet</h3>
             <p className="text-gray-500 mb-4">Add your first customer to get started</p>
             <div className="flex gap-2 justify-center">
-              <Button className="w-full sm:w-auto">+ Add Customer</Button>
+              <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
               <Button variant="outline" onClick={() => setImportDropdownOpen(true)}>
                 📥 Import Excel
               </Button>
@@ -627,7 +744,7 @@ export function Customers() {
           <p className="text-gray-500 mt-1">Showing {visibleCustomers.length} of {sorted.length} results</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">+ Add Customer</Button>
+          <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
           {selectedIds.size > 0 && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={downloadSelectedReport}>
@@ -863,6 +980,122 @@ export function Customers() {
                     {deleting ? 'Deleting...' : `Delete ${selectedIds.size} Customer(s) Permanently`}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Add Customer Modal */}
+      {addCustomerModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setAddCustomerModalOpen(false)} />
+            <Card className="relative w-full max-w-md">
+              <CardHeader className="border-b border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Add New Customer</CardTitle>
+                  <button onClick={() => { setAddCustomerModalOpen(false); setAddCustomerError(null); }} className="p-1 hover:bg-gray-100 rounded">
+                    ✕
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                {addCustomerError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                    {addCustomerError}
+                  </div>
+                )}
+                <form onSubmit={(e) => { e.preventDefault(); handleAddCustomer(); }}>
+                  <div>
+                    <label htmlFor="customer-portal-id" className="block text-sm font-medium text-gray-700 mb-1">
+                      Portal Customer ID (LCOID)
+                    </label>
+                    <Input
+                      id="customer-portal-id"
+                      value={newCustomerPortalId}
+                      onChange={(e) => setNewCustomerPortalId(e.target.value.toUpperCase())}
+                      placeholder="e.g., 100"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
+                    <Input
+                      id="customer-name"
+                      value={newCustomerName}
+                      onChange={(e) => setNewCustomerName(e.target.value)}
+                      placeholder="e.g., John Doe"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-mobile" className="block text-sm font-medium text-gray-700 mb-1">
+                      Mobile
+                    </label>
+                    <Input
+                      id="customer-mobile"
+                      value={newCustomerMobile}
+                      onChange={(e) => setNewCustomerMobile(e.target.value)}
+                      placeholder="e.g., 9832433875"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-address" className="block text-sm font-medium text-gray-700 mb-1">
+                      Address
+                    </label>
+                    <Input
+                      id="customer-address"
+                      value={newCustomerAddress}
+                      onChange={(e) => setNewCustomerAddress(e.target.value)}
+                      placeholder="e.g., BC Colony, Siliguri"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-location" className="block text-sm font-medium text-gray-700 mb-1">
+                      Location
+                    </label>
+                    <Input
+                      id="customer-location"
+                      value={newCustomerLocation}
+                      onChange={(e) => setNewCustomerLocation(e.target.value)}
+                      placeholder="e.g., BC Colony"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-cable-ref" className="block text-sm font-medium text-gray-700 mb-1">
+                      Cable Reference ID
+                    </label>
+                    <Input
+                      id="customer-cable-ref"
+                      value={newCustomerCableRefId}
+                      onChange={(e) => setNewCustomerCableRefId(e.target.value)}
+                      placeholder="e.g., STB12345"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-internet-ref" className="block text-sm font-medium text-gray-700 mb-1">
+                      Internet Reference ID
+                    </label>
+                    <Input
+                      id="customer-internet-ref"
+                      value={newCustomerInternetRefId}
+                      onChange={(e) => setNewCustomerInternetRefId(e.target.value)}
+                      placeholder="e.g., FCC036"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-4 border-t border-gray-200">
+                    <Button variant="outline" onClick={() => { setAddCustomerModalOpen(false); setAddCustomerError(null); }} className="flex-1">
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={addCustomerLoading}>
+                      {addCustomerLoading ? 'Adding...' : 'Add Customer'}
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </div>
