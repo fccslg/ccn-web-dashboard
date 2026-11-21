@@ -37,6 +37,22 @@ export function OrganizationSelection() {
     try {
       const sb = (await import('../shared')).getSupabaseClient();
 
+      // Check if organization code already exists
+      const { data: existingOrg, error: checkError } = await sb
+        .from('organizations')
+        .select('id')
+        .eq('code', newOrgCode.toUpperCase())
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 = no rows found (expected if code doesn't exist)
+        throw checkError;
+      }
+
+      if (existingOrg) {
+        throw new Error('Organization code already exists. Please choose a different code.');
+      }
+
       // Create organization
       type OrgInsert = { id: string };
       const { data: orgData, error: orgError } = await sb
