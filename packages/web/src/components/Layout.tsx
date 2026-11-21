@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 const navigation = [
@@ -17,6 +17,19 @@ export function Layout() {
   const { user, signOut, organizations, currentOrg, setCurrentOrg } = useAuth();
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const orgDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close org dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target as Node)) {
+        setOrgDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -149,7 +162,10 @@ export function Layout() {
                     </svg>
                   </button>
                   {orgDropdownOpen && (
-                    <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                    <div
+                      ref={orgDropdownRef}
+                      className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
+                    >
                       {organizations.map((org) => (
                         <button
                           key={org.organization.id}
