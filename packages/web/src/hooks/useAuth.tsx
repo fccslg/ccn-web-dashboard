@@ -57,15 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sb = getSupabaseClient();
 
     // Get initial session
-    sb.auth.getSession().then(({ data: { session } }) => {
+    sb.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchUserOrganizations(session.user.id);
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = sb.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
-      setLoading(false);
 
       if (session?.user) {
         await fetchUserOrganizations(session.user.id);
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setOrganizations([]);
         setCurrentOrg(null);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
