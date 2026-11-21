@@ -88,42 +88,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setOrgsLoading(true);
       const sb = getSupabaseClient();
 
-      // Get user's employee records with organization details
-      type EmployeeWithOrg = {
+      // Step 1: Get user's employee records (no join - avoids RLS issues)
+      type EmployeeRecord = {
         id: string;
         role: string;
         permissions: Record<string, boolean>;
-        organizations: Organization;
+        organization_id: string;
       };
 
-      const { data: employees, error } = await sb
+      const { data: employees, error: empError } = await sb
         .from('employees')
-        .select(`
-          id,
-          role,
-          permissions,
-          organization_id,
-          organizations!inner (
-            id,
-            name,
-            code,
-            gst_number,
-            address,
-            settings,
-            created_at,
-            updated_at
-          )
-        `)
+        .select('id, role, permissions, organization_id')
         .eq('user_id', userId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (empError) throw empError;
 
-      const userOrgs: UserOrganization[] = (employees as EmployeeWithOrg[] || []).map(emp => ({
-        organization: emp.organizations,
+      if (!employees || employees.length === 0) {
+        setOrganizations([]);
+        setCurrentOrg(null);
+        setStoredOrgId(null);
+        return;
+      }
+
+      // Step 2: Fetch organizations separately (RLS will allow since user has employee records)
+      type OrgRecord = {
+        id: string;
+        name: string;
+        code: string;
+        gst_number: string | null;
+        address: any;
+        settings: any;
+        created_at: string;
+        updated_at: string;
+      };
+
+      const orgIds = (employees as EmployeeRecord[]).map(e => e.organization_id);
+      const { data: organizations, error: orgError } = await sb
+        .from('organizations')
+        .select('id, name, code, gst_number, address, settings, created_at, updated_at')
+        .in('id', orgIds);
+
+      if (orgError) throw orgError;
+
+      const orgMap = new Map((organizations as OrgRecord[] || []).map(o => [o.id, o as Organization]));
+
+      const userOrgs: UserOrganization[] = (employees as EmployeeRecord[]).map(emp => ({
+        organization: orgMap.get(emp.organization_id)!,
         role: emp.role as UserOrganization['role'],
         permissions: emp.permissions,
-      }));
+      })).filter(o => o.organization); // Filter out any missing orgs
 
       setOrganizations(userOrgs);
 
