@@ -66,7 +66,7 @@ interface ImportPreview {
 
 export function Customers() {
   // DEBUG: Simple log to verify component execution
-  console.log('Customers component rendering');
+  console.log('Customers component rendering v2');
 
   const [search, setSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
