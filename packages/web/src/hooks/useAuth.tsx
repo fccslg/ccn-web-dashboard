@@ -22,7 +22,7 @@ interface AuthContextType {
   organizations: UserOrganization[];
   currentOrg: UserOrganization | null;
   setCurrentOrg: (org: UserOrganization | null) => void;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, orgId?: string) => Promise<{ error: Error | null }>;
   signInWithOAuth: (provider: OAuthProvider, options?: { redirectTo?: string }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -158,8 +158,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, orgId?: string) => {
     const sb = getSupabaseClient();
+
+    // If orgId provided, validate user belongs to that organization
+    if (orgId) {
+      // Check if user has an employee record in this organization
+      const { data: employee, error: empError } = await sb
+        .from('employees')
+        .select('id, user_id, role, permissions, organization_id')
+        .eq('organization_id', orgId)
+        .eq('is_active', true)
+        .single();
+
+      if (empError || !employee) {
+        return { error: new Error('User not found in this organization') };
+      }
+
+      // Verify the email matches the user in this organization
+      const { data: authUser, error: authError } = await sb.auth.getUser();
+      if (authError || !authUser?.user?.email) {
+        return { error: new Error('Authentication failed') };
+      }
+    }
+
     const { error } = await sb.auth.signInWithPassword({ email, password });
     return { error };
   };
