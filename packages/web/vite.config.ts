@@ -16,8 +16,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    minify: 'esbuild',
+    minify: 'terser',
     target: 'es2020',
+    terserOptions: {
+      compress: {
+        keep_fnames: true,
+        keep_classnames: true,
+      },
+      mangle: {
+        reserved: ['_', 'w'],
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks: {
@@ -28,7 +37,5 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
-    _: 'lodash',
-    w: 'lodash',
   },
 });
