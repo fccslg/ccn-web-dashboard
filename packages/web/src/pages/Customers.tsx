@@ -853,10 +853,10 @@ export function Customers() {
 
       {/* Import Modal */}
       {importModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
+        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid blue', outlineOffset: '-3px' }}>
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={() => setImportModalOpen(false)} />
-            <Card className="relative w-full max-w-3xl max-h-[80vh] overflow-hidden" style={{ outline: '3px solid blue', outlineOffset: '-3px' }}>
+            <Card className="relative w-full max-w-3xl max-h-[80vh] overflow-hidden">
               <CardHeader className="border-b border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <CardTitle>Import Customers from Excel</CardTitle>
@@ -988,10 +988,10 @@ export function Customers() {
 
       {/* Add Customer Modal */}
       {addCustomerModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
+        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid red', outlineOffset: '-3px' }}>
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={() => setAddCustomerModalOpen(false)} />
-            <Card className="relative w-full max-w-md" style={{ outline: '3px solid red', outlineOffset: '-3px' }}>
+            <Card className="relative w-full max-w-md">
               <CardHeader className="border-b border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <CardTitle>Add New Customer</CardTitle>
