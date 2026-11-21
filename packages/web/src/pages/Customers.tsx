@@ -834,6 +834,7 @@ export function Customers() {
                   <th className="px-6 py-3 font-medium cursor-pointer" onClick={() => handleSort('mobile')}>Mobile{sortIndicator('mobile')}</th>
                   <th className="px-6 py-3 font-medium cursor-pointer" onClick={() => handleSort('location')}>Location{sortIndicator('location')}</th>
                   <th className="px-6 py-3 font-medium text-right cursor-pointer" onClick={() => handleSort('due')}>Due{sortIndicator('due')}</th>
+                  <th className="px-6 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -906,6 +907,30 @@ export function Customers() {
                         </div>
                       )}
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => { setIsAddingCustomer(false); setAddCustomerError(null); }}
+                          disabled={addCustomerLoading}
+                          className="px-3 py-1.5 text-sm"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleAddCustomer}
+                          disabled={addCustomerLoading || !newCustomerName || !newCustomerPortalId}
+                          className="px-3 py-1.5 text-sm"
+                        >
+                          {addCustomerLoading ? 'Adding...' : 'Add'}
+                        </Button>
+                      </div>
+                      {addCustomerError && (
+                        <div className="mt-1 text-xs text-red-600">
+                          {addCustomerError}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 )}
                 {visibleCustomers.map((c, index) => (
@@ -929,6 +954,7 @@ export function Customers() {
                     <td className={`px-6 py-4 text-sm text-right font-medium ${c.due < 0 ? 'text-red-600' : c.due > 0 ? 'text-green-600' : 'text-gray-900'}`}>
                       {formatINR(Math.abs(c.due))}
                     </td>
+                    <td className="px-6 py-4"></td>
                   </tr>
                 ))}
               </tbody>
