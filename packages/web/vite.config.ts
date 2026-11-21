@@ -16,8 +16,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    minify: 'esbuild',
+    minify: 'terser',
     target: 'es2020',
+    terserOptions: {
+      keep_fnames: true,
+      mangle: {
+        reserved: ['w', '_', 'require', 'exports', 'module', 'describe', 'it', 'beforeAll', 'afterAll', 'beforeEach', 'afterEach'],
+      },
+      compress: {},
+    },
     rollupOptions: {
       output: {
         manualChunks: {
