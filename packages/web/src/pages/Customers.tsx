@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Card, CardContent } from '../components/ui/Card';
+import * as XLSX from 'xlsx';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { formatINR, formatPortalCustomerId, type Paise } from '../shared';
@@ -19,6 +20,19 @@ interface CustomerWithDue {
   due: Paise;
 }
 
+interface ImportPreview {
+  portalId: string;
+  name: string;
+  mobile: string | null;
+  location: string | null;
+  address: string | null;
+  cableRefId: string | null;
+  internetRefId: string | null;
+  status: string;
+  isValid: boolean;
+  error?: string;
+}
+
 export function Customers() {
   const [search, setSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
@@ -27,6 +41,10 @@ export function Customers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allCustomers, setAllCustomers] = useState<CustomerWithDue[]>([]);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +125,198 @@ export function Customers() {
 
     fetchCustomers();
   }, []);
+
+  // Import Excel file
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Assume first sheet is the customer data
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+        if (jsonData.length < 2) {
+          setImportError('File appears to be empty or has no data rows');
+          return;
+        }
+
+        // Expected headers: LCOID, Name, Mobile, Address, Cable Serial, Cable VC, Internet ID
+        const rows = jsonData.slice(1) as (string | number | null)[][];
+
+        const preview: ImportPreview[] = rows.map((row) => {
+          const portalId = normalizePortalId(String(row[0] || ''));
+          const name = String(row[1] || '').trim();
+          const mobile = String(row[2] || '').trim() || null;
+          const address = String(row[3] || '').trim() || null;
+          const cableRefId = String(row[4] || '').trim() || null;
+          const vcNumber = String(row[5] || '').trim() || null;
+          const internetRefId = String(row[6] || '').trim() || null;
+
+          const isValid = !!portalId && !!name;
+          let error = '';
+          if (!portalId) error += 'Missing LCOID; ';
+          if (!name) error += 'Missing Name; ';
+
+          return {
+            portalId,
+            name,
+            mobile,
+            location: extractLocation(address),
+            address,
+            cableRefId: cableRefId || (vcNumber ? `VC:${vcNumber}` : null),
+            internetRefId,
+            status: 'active',
+            isValid,
+            error: error || undefined,
+          };
+        });
+
+        setImportPreview(preview);
+        setImportError(null);
+        setImportModalOpen(true);
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : 'Failed to parse Excel file');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Reset input
+    e.target.value = '';
+  };
+
+  const normalizePortalId = (id: string): string => {
+    const cleaned = id.replace(/\D/g, '');
+    return cleaned || '';
+  };
+
+  const extractLocation = (address: string | null): string | null => {
+    if (!address) return null;
+    const knownLocations = ['BC Colony', 'Janata Nagar', 'W. Ashram', 'Dashratpally', 'S.R. Colony', 'Office', 'Ashish Apt', 'Shanti Apt', 'MES', 'Darjeeling more', 'Bagchi Building'];
+    for (const loc of knownLocations) {
+      if (address.includes(loc)) return loc;
+    }
+    return null;
+  };
+
+  const handleImportConfirm = async () => {
+    const validRows = importPreview.filter(r => r.isValid);
+    if (validRows.length === 0) {
+      setImportError('No valid rows to import');
+      return;
+    }
+
+    setImporting(true);
+    setImportError(null);
+
+    try {
+      const sb = getSupabaseClient();
+      const orgId = await getCurrentOrgId();
+      if (!orgId) throw new Error('No organization found');
+
+      let imported = 0;
+      let skipped = 0;
+
+      for (const row of validRows) {
+        // Check if customer already exists
+        const { data: existing } = await sb
+          .from('customers')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('portal_customer_id', row.portalId)
+          .single();
+
+        if (existing) {
+          skipped++;
+          continue;
+        }
+
+        // Insert new customer
+        const { error } = await sb
+          .from('customers')
+          .insert({
+            organization_id: orgId,
+            portal_customer_id: row.portalId,
+            name: row.name,
+            mobile: row.mobile,
+            address: row.address,
+            location: row.location,
+            cable_ref_id: row.cableRefId,
+            internet_ref_id: row.internetRefId,
+            status: row.status as 'active',
+          } as any);
+
+        if (error) {
+          console.error('Import error for', row.portalId, error);
+        } else {
+          imported++;
+        }
+      }
+
+      // Refresh customer list
+      const { data: customers } = await sb
+        .from('customers')
+        .select('id, portal_customer_id, name, mobile, location, status')
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .order('portal_customer_id', { ascending: true });
+
+      // Recalculate dues for refreshed list
+      const customersWithDue: CustomerWithDue[] = [];
+      for (const cust of (customers as CustomerRow[]) || []) {
+        const { data: accounts } = await sb
+          .from('customer_accounts')
+          .select('id')
+          .eq('customer_id', cust.id)
+          .eq('status', 'active')
+          .limit(1);
+
+        type AccountRow = { id: string };
+        let due: Paise = 0;
+
+        if (accounts && accounts.length > 0) {
+          const accountId = (accounts[0] as AccountRow).id;
+          const { data: billingRecords } = await sb
+            .from('billing_records')
+            .select('total_due')
+            .eq('customer_account_id', accountId)
+            .order('billing_month', { ascending: false })
+            .limit(1);
+
+          if (billingRecords && billingRecords.length > 0) {
+            due = (billingRecords[0] as BillingRecordRow).total_due as Paise ?? 0;
+          }
+        }
+
+        customersWithDue.push({
+          id: cust.id,
+          portalId: cust.portal_customer_id,
+          name: cust.name,
+          mobile: cust.mobile,
+          location: cust.location,
+          status: cust.status,
+          due,
+        });
+      }
+
+      setAllCustomers(customersWithDue);
+      setImportModalOpen(false);
+      setImportPreview([]);
+      setImportError(`Imported ${imported} customers, skipped ${skipped} duplicates`);
+
+      // Clear error after 5 seconds
+      setTimeout(() => setImportError(null), 5000);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   // Filtered data based on search
   const filtered = useMemo(() => {
@@ -216,7 +426,19 @@ export function Customers() {
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
           <p className="text-gray-500 mt-1">Showing {visibleCustomers.length} of {sorted.length} results</p>
         </div>
-        <Button className="w-full sm:w-auto">+ Add Customer</Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">+ Add Customer</Button>
+          <Button variant="outline" onClick={() => document.getElementById('import-file-input')?.click()}>
+            📥 Import Excel
+          </Button>
+          <input
+            id="import-file-input"
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+        </div>
       </div>
 
       <Card>
@@ -264,6 +486,84 @@ export function Customers() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Import Modal */}
+      {importModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setImportModalOpen(false)} />
+            <Card className="relative w-full max-w-3xl max-h-[80vh] overflow-hidden">
+              <CardHeader className="border-b border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Import Customers from Excel</CardTitle>
+                  <button onClick={() => { setImportModalOpen(false); setImportPreview([]); setImportError(null); }} className="p-1 hover:bg-gray-100 rounded">
+                    ✕
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 overflow-y-auto max-h-[60vh]">
+                {importError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                    {importError}
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Preview ({importPreview.filter(r => r.isValid).length} valid, {importPreview.filter(r => !r.isValid).length} invalid)
+                  </p>
+                  <div className="overflow-x-auto max-h-96">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-500 border-b border-gray-200 sticky top-0 bg-white">
+                          <th className="px-3 py-2 font-medium">LCOID</th>
+                          <th className="px-3 py-2 font-medium">Name</th>
+                          <th className="px-3 py-2 font-medium">Mobile</th>
+                          <th className="px-3 py-2 font-medium">Location</th>
+                          <th className="px-3 py-2 font-medium">Cable Ref</th>
+                          <th className="px-3 py-2 font-medium">Internet Ref</th>
+                          <th className="px-3 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {importPreview.map((row, idx) => (
+                          <tr key={idx} className={row.isValid ? '' : 'bg-red-50'}>
+                            <td className="px-3 py-2 font-mono">{row.portalId || '-'}</td>
+                            <td className="px-3 py-2 font-medium">{row.name}</td>
+                            <td className="px-3 py-2 text-gray-600">{row.mobile || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{row.location || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{row.cableRefId || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{row.internetRefId || '-'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                                row.isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {row.isValid ? 'Valid' : row.error}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                  <Button variant="outline" onClick={() => { setImportModalOpen(false); setImportPreview([]); setImportError(null); }}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleImportConfirm}
+                    disabled={importing || importPreview.filter(r => r.isValid).length === 0}
+                  >
+                    {importing ? 'Importing...' : `Import ${importPreview.filter(r => r.isValid).length} Customers`}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
