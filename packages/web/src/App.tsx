@@ -9,10 +9,11 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { AuthCallback } from './pages/AuthCallback';
+import { OrganizationSelection } from './pages/OrganizationSelection';
 import { useAuth } from './hooks/useAuth';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, organizations, currentOrg } = useAuth();
 
   if (loading) {
     return (
@@ -26,6 +27,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
+  // If user has no organizations, they need to create one
+  // If user has multiple organizations and none selected, show org selection
+  const needsOrgSelection = organizations.length === 0 || (organizations.length > 1 && !currentOrg);
+
+  if (needsOrgSelection) {
+    return <Navigate to="/select-organization" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -34,6 +43,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/select-organization" element={<OrganizationSelection />} />
       <Route
         path="/*"
         element={
