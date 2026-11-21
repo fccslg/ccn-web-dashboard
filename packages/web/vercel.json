@@ -1,9 +1,9 @@
 {
-  "buildCommand": "npm install && npm run build",
+  "buildCommand": "pnpm install && pnpm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "installCommand": "npm install",
-  "devCommand": "npm run dev",
+  "installCommand": "pnpm install",
+  "devCommand": "pnpm dev",
   "github": {
     "enabled": true,
     "autoAlias": true,
@@ -26,7 +26,7 @@
           "value": "1; mode=block"
         }
       ]
-    ],
+    },
     "rewrites": [
       {
         "source": "/(.*)",
