@@ -7,6 +7,36 @@ import { formatINR, formatPortalCustomerId, type Paise } from '../shared';
 import { getSupabaseClient, getCurrentOrgId } from '../shared/api/supabase';
 import type { Database } from '../shared/api/database.types';
 
+function downloadSampleExcel() {
+  const headers = [
+    'LCOID',
+    'Name',
+    'Mobile',
+    'Address',
+    'Cable Serial',
+    'Cable VC',
+    'Internet ID'
+  ];
+
+  const sampleData = [
+    ['100', 'Amal Sanyal', '9832433875', 'BC Colony, Siliguri', 'STB12345', 'VC67890', 'INT001'],
+    ['101', 'Amit Tamang', '9093518879', 'W. Ashram, Siliguri', 'STB12346', 'VC67891', 'INT002'],
+    ['102', 'Anima Mandal', '8967924475', 'BC Colony, Siliguri', 'STB12347', 'VC67892', 'INT003'],
+    ['103', 'Anima Sarkar', '9749051999', 'BC Colony, Siliguri', 'STB12348', 'VC67893', 'INT004'],
+    ['104', 'Anup Saha', '7679518395', 'Janata Nagar, Siliguri', 'STB12349', 'VC67894', 'INT005'],
+    ['105', 'Apu Sarkar', '9832014456', 'Janata Nagar, Siliguri', 'STB12350', 'VC67895', 'INT006'],
+    ['107', 'Ashish Roy Chowdhury', '9635818483', 'Janata Nagar, Siliguri', 'STB12351', 'VC67896', 'INT007'],
+    ['108', 'Asit Kumar Sarkar', '9851151244', 'W. Ashram, Siliguri', 'STB12352', 'VC67897', 'INT008'],
+    ['109', 'Atanu Dakua', '8509734610', 'Dashratpally, Siliguri', 'STB12353', 'VC67898', 'INT009'],
+    ['111', 'Babu Ghosh I', '9933508484', 'Janata Nagar, Siliguri', 'STB12354', 'VC67899', 'INT010'],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+  XLSX.writeFile(wb, 'Customer_Import_Template.xlsx');
+}
+
 type CustomerRow = Database['public']['Tables']['customers']['Row'];
 type BillingRecordRow = Database['public']['Tables']['billing_records']['Row'];
 
@@ -45,6 +75,7 @@ export function Customers() {
   const [importPreview, setImportPreview] = useState<ImportPreview[]>([]);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importDropdownOpen, setImportDropdownOpen] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -428,16 +459,37 @@ export function Customers() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button className="w-full sm:w-auto">+ Add Customer</Button>
-          <Button variant="outline" onClick={() => document.getElementById('import-file-input')?.click()}>
-            📥 Import Excel
-          </Button>
-          <input
-            id="import-file-input"
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleFileChange}
-            className="hidden"
-          />
+          <div className="relative">
+            <Button variant="outline" onClick={() => setImportDropdownOpen(!importDropdownOpen)}>
+              📥 Import Excel
+              <svg className="ml-1 w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </Button>
+            {importDropdownOpen && (
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <button
+                  onClick={() => { downloadSampleExcel(); setImportDropdownOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <span className="w-5 h-5">📥</span>
+                  Download Template
+                </button>
+                <hr className="my-1 border-gray-200" />
+                <label className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer">
+                  <span className="w-5 h-5">📤</span>
+                  Import File
+                  <input
+                    id="import-file-input"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => { handleFileChange(e); setImportDropdownOpen(false); }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
