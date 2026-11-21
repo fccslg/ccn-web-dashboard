@@ -1,0 +1,40 @@
+{
+  "name": "ccn-business-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CCN Business Management System - Chrome Extension, Web Dashboard, Android App",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:extension": "pnpm --filter extension dev",
+    "dev:mobile": "pnpm --filter mobile dev",
+    "build:web": "pnpm --filter web build",
+    "build:extension": "pnpm --filter extension build",
+    "build:mobile": "pnpm --filter mobile build",
+    "build": "pnpm run build:web && pnpm run build:extension",
+    "lint": "pnpm --filter shared lint && pnpm --filter web lint && pnpm --filter extension lint && pnpm --filter mobile lint",
+    "typecheck": "pnpm --filter shared typecheck && pnpm --filter web typecheck && pnpm --filter extension typecheck && pnpm --filter mobile typecheck",
+    "test": "pnpm --filter shared test && pnpm --filter web test",
+    "db:generate": "pnpm --filter shared db:generate",
+    "db:migrate": "supabase migration up",
+    "db:reset": "supabase db reset",
+    "db:seed": "supabase db seed",
+    "import:excel": "tsx scripts/import-excel.ts",
+    "reconcile": "tsx scripts/reconcile.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "supabase": "^1.140.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
