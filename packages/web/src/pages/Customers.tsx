@@ -107,6 +107,11 @@ export function Customers() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { currentOrg } = useAuth();
 
+  // DEBUG: Log every render with state values
+  useEffect(() => {
+    console.log('Customers rendered, addCustomerModalOpen:', addCustomerModalOpen, 'importModalOpen:', importModalOpen);
+  }, [addCustomerModalOpen, importModalOpen]);
+
   // Fetch customers from Supabase
   useEffect(() => {
     async function fetchCustomers() {
