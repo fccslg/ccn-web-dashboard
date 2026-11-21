@@ -57,9 +57,6 @@ importers:
 
   packages/web:
     dependencies:
-      '@ccn/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@supabase/supabase-js':
         specifier: ^2.119.2
         version: 2.119.2

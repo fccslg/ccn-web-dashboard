@@ -3,10 +3,13 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { getSupabaseClient } from '../shared';
 import type { User } from '@supabase/supabase-js';
 
+type OAuthProvider = 'google' | 'github' | 'azure' | 'discord' | 'facebook' | 'gitlab';
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithOAuth: (provider: OAuthProvider, options?: { redirectTo?: string }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -40,6 +43,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const signInWithOAuth = async (provider: OAuthProvider, options?: { redirectTo?: string }) => {
+    const sb = getSupabaseClient();
+    const { error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: options?.redirectTo || `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+    return { error };
+  };
+
   const signOut = async () => {
     const sb = getSupabaseClient();
     await sb.auth.signOut();
@@ -47,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signInWithOAuth, signOut }}>
       {children}
     </AuthContext.Provider>
   );

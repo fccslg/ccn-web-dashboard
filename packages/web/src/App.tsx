@@ -8,6 +8,7 @@ import { Cashbook } from './pages/Cashbook';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
+import { AuthCallback } from './pages/AuthCallback';
 import { useAuth } from './hooks/useAuth';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/*"
         element={
