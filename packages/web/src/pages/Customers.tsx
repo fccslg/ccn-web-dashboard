@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { formatINR, formatPortalCustomerId, type Paise } from '../shared';
-import { getSupabaseClient, getCurrentOrgId } from '../shared/api/supabase';
+import { getSupabaseClient } from '../shared/api/supabase';
+import { useAuth } from '../hooks/useAuth';
 import type { Database } from '../shared/api/database.types';
 
 function downloadSampleExcel() {
@@ -84,26 +85,26 @@ export function Customers() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { currentOrg } = useAuth();
 
   // Fetch customers from Supabase
   useEffect(() => {
     async function fetchCustomers() {
+      if (!currentOrg) {
+        setError('No organization selected');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const sb = getSupabaseClient();
-
-        // Get organization ID
-        const orgId = await getCurrentOrgId();
-        const effectiveOrgId = orgId || import.meta.env.VITE_DEFAULT_ORG_ID;
-        if (!effectiveOrgId) {
-          throw new Error('No organization found. Please ensure your user has an employee record, or set VITE_DEFAULT_ORG_ID in .env.production');
-        }
 
         // Fetch all customers for this organization
         const { data: customers, error: custError } = await sb
           .from('customers')
           .select('id, portal_customer_id, name, mobile, location, status')
-          .eq('organization_id', effectiveOrgId)
+          .eq('organization_id', currentOrg.organization.id)
           .eq('status', 'active')
           .order('portal_customer_id', { ascending: true });
 
@@ -249,13 +250,17 @@ export function Customers() {
       return;
     }
 
+    if (!currentOrg) {
+      setImportError('No organization selected');
+      return;
+    }
+
     setImporting(true);
     setImportError(null);
 
     try {
       const sb = getSupabaseClient();
-      const orgId = await getCurrentOrgId();
-      if (!orgId) throw new Error('No organization found');
+      const orgId = currentOrg.organization.id;
 
       let imported = 0;
       let skipped = 0;
@@ -452,13 +457,17 @@ export function Customers() {
     // In production, verify via Supabase RPC
     // if (deletePassword !== OWNER_PASSWORD) { setDeleteError('Incorrect password'); return; }
 
+    if (!currentOrg) {
+      setDeleteError('No organization selected');
+      return;
+    }
+
     setDeleting(true);
     setDeleteError(null);
 
     try {
       const sb = getSupabaseClient();
-      const orgId = await getCurrentOrgId();
-      if (!orgId) throw new Error('No organization found');
+      const orgId = currentOrg.organization.id;
 
       const idsToDelete = Array.from(selectedIds);
       for (const id of idsToDelete) {

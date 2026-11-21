@@ -13,8 +13,9 @@ const navigation = [
 
 export function Layout() {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, organizations, currentOrg, setCurrentOrg } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -105,9 +106,47 @@ export function Layout() {
       }`}>
         <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
           <div className="px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {navigation.find(n => location.pathname === n.href || location.pathname.startsWith(n.href))?.name || 'Dashboard'}
-            </h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {navigation.find(n => location.pathname === n.href || location.pathname.startsWith(n.href))?.name || 'Dashboard'}
+              </h1>
+
+              {/* Organization Selector */}
+              {organizations.length > 0 && (
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    aria-label="Switch organization"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className="truncate max-w-[200px]">
+                      {currentOrg?.organization.name || 'Select Organization'}
+                    </span>
+                    <svg className={`w-4 h-4 text-gray-500 transition-transform ${orgDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {orgDropdownOpen && (
+                    <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                      {organizations.map((org) => (
+                        <button
+                          key={org.organization.id}
+                          onClick={() => { setCurrentOrg(org); setOrgDropdownOpen(false); }}
+                          className={`w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 ${
+                            currentOrg?.organization.id === org.organization.id ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${currentOrg?.organization.id === org.organization.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
+                          <span className="truncate">{org.organization.name}</span>
+                          <span className="text-xs text-gray-500 capitalize">{org.role}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
