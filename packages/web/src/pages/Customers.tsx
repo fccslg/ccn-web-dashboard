@@ -312,6 +312,7 @@ export function Customers() {
             cable_ref_id: row.cableRefId,
             internet_ref_id: row.internetRefId,
             status: row.status as 'active',
+            metadata: {},
           } as any);
 
         if (error) {
@@ -485,6 +486,7 @@ export function Customers() {
         cable_ref_id: newCustomerCableRefId.trim() || null,
         internet_ref_id: newCustomerInternetRefId.trim() || null,
         status: 'active',
+        metadata: {},
       } as any);
 
       // Refresh customer list
@@ -882,30 +884,6 @@ export function Customers() {
                         placeholder="Location"
                         className="w-full"
                       />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          onClick={() => { setIsAddingCustomer(false); setAddCustomerError(null); }}
-                          disabled={addCustomerLoading}
-                          className="px-3 py-1.5 text-sm"
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleAddCustomer}
-                          disabled={addCustomerLoading || !newCustomerName || !newCustomerPortalId}
-                          className="px-3 py-1.5 text-sm"
-                        >
-                          {addCustomerLoading ? 'Adding...' : 'Add'}
-                        </Button>
-                      </div>
-                      {addCustomerError && (
-                        <div className="mt-1 text-xs text-red-600">
-                          {addCustomerError}
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 justify-end">
