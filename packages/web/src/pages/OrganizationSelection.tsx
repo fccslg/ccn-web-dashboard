@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -14,14 +14,85 @@ export function OrganizationSelection() {
   const [newOrgCode, setNewOrgCode] = useState('');
   const navigate = useNavigate();
 
-  const handleSignOut = async () => {
+  // Define handlers at the top to avoid terser minification issues
+  const handleSignOut = useCallback(async () => {
     const { getSupabaseClient } = await import('../shared');
     const sb = getSupabaseClient();
     await sb.auth.signOut();
     navigate('/login');
-  };
+  }, [navigate]);
 
-  // If already has a selected org, redirect to dashboard
+  const handleSelectOrg = useCallback((org: typeof organizations[0]) => {
+    setCurrentOrg(org);
+    navigate('/dashboard');
+  }, [setCurrentOrg, navigate]);
+
+  const handleCreateOrg = useCallback(async () => {
+    if (!newOrgName || !newOrgCode) return;
+    if (!user) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const sb = (await import('../shared')).getSupabaseClient();
+
+      // Create organization
+      type OrgInsert = { id: string };
+      const { data: orgData, error: orgError } = await sb
+        .from('organizations')
+        .insert({
+          name: newOrgName,
+          code: newOrgCode.toUpperCase(),
+          settings: {
+            timezone: 'Asia/Kolkata',
+            date_format: 'DD-MM-YYYY',
+            currency: 'INR',
+            financial_year_start_month: 4,
+            auto_carry_forward_pbal: true,
+            default_payment_mode: 'cash',
+          },
+        } as any)
+        .select('id')
+        .single();
+
+      if (orgError) throw orgError;
+
+      const orgId = (orgData as OrgInsert).id;
+
+      // Create employee record linking user to new org as owner
+      const { error: empError } = await sb
+        .from('employees')
+        .insert({
+          user_id: user.id,
+          organization_id: orgId,
+          role: 'owner',
+          permissions: {
+            can_manage_employees: true,
+            can_manage_customers: true,
+            can_view_all_financials: true,
+            can_approve_corrections: true,
+            can_import_export: true,
+            can_configure_system: true,
+            assigned_locations: [],
+            assigned_collectors: [],
+          },
+          is_active: true,
+        } as any);
+
+      if (empError) throw empError;
+
+      // Refresh organizations by triggering auth refresh
+      setShowCreateOrg(false);
+      navigate('/select-organization');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create organization');
+    } finally {
+      setLoading(false);
+    }
+  }, [newOrgName, newOrgCode, user, navigate]);
+
+  // Effect for auto-redirect when org is selected
   useEffect(() => {
     if (currentOrg && !authLoading) {
       navigate('/dashboard');
@@ -95,7 +166,6 @@ export function OrganizationSelection() {
 
   // If single organization, auto-select and redirect
   if (organizations.length === 1 && !currentOrg && !authLoading) {
-    // Auto-select will happen in useAuth
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center">
@@ -221,74 +291,4 @@ export function OrganizationSelection() {
       </div>
     </div>
   );
-
-  const handleSelectOrg = (org: typeof organizations[0]) => {
-    setCurrentOrg(org);
-    navigate('/dashboard');
-  };
-
-  const handleCreateOrg = async () => {
-    if (!newOrgName || !newOrgCode) return;
-    if (!user) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const sb = (await import('../shared')).getSupabaseClient();
-
-      // Create organization
-      type OrgInsert = { id: string };
-      const { data: orgData, error: orgError } = await sb
-        .from('organizations')
-        .insert({
-          name: newOrgName,
-          code: newOrgCode.toUpperCase(),
-          settings: {
-            timezone: 'Asia/Kolkata',
-            date_format: 'DD-MM-YYYY',
-            currency: 'INR',
-            financial_year_start_month: 4,
-            auto_carry_forward_pbal: true,
-            default_payment_mode: 'cash',
-          },
-        } as any)
-        .select('id')
-        .single();
-
-      if (orgError) throw orgError;
-
-      const orgId = (orgData as OrgInsert).id;
-
-      // Create employee record linking user to new org as owner
-      const { error: empError } = await sb
-        .from('employees')
-        .insert({
-          user_id: user.id,
-          organization_id: orgId,
-          role: 'owner',
-          permissions: {
-            can_manage_employees: true,
-            can_manage_customers: true,
-            can_view_all_financials: true,
-            can_approve_corrections: true,
-            can_import_export: true,
-            can_configure_system: true,
-            assigned_locations: [],
-            assigned_collectors: [],
-          },
-          is_active: true,
-        } as any);
-
-      if (empError) throw empError;
-
-      // Refresh organizations by triggering auth refresh
-      setShowCreateOrg(false);
-      navigate('/select-organization');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create organization');
-    } finally {
-      setLoading(false);
-    }
-  };
 }
