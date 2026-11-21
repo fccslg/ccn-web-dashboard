@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -13,6 +13,7 @@ const navigation = [
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut, organizations, currentOrg, setCurrentOrg } = useAuth();
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -162,6 +163,18 @@ export function Layout() {
                           <span className="text-xs text-gray-500 capitalize">{org.role}</span>
                         </button>
                       ))}
+                      <hr className="my-1 border-gray-200" />
+                      <button
+                        onClick={() => { setOrgDropdownOpen(false); navigate('/select-organization'); }}
+                        className="w-full px-4 py-2 text-left text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2"
+                      >
+                        <span className="w-5 h-5 flex items-center justify-center">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                        </span>
+                        <span>Create New Organization</span>
+                      </button>
                     </div>
                   )}
                 </div>
