@@ -738,6 +738,17 @@ export function Customers() {
 
   return (
     <div className="space-y-6">
+      {/* DEBUG: Show modal state */}
+      <div className="fixed top-0 right-0 z-[100] p-4 pointer-events-none">
+        <div className="bg-black text-white px-4 py-2 rounded text-sm font-mono">
+          Add Customer Modal: {addCustomerModalOpen ? 'OPEN' : 'CLOSED'}
+        </div>
+      </div>
+      <div className="fixed top-32 right-0 z-[100] p-4 pointer-events-none">
+        <div className="bg-black text-white px-4 py-2 rounded text-sm font-mono">
+          Import Modal: {importModalOpen ? 'OPEN' : 'CLOSED'}
+        </div>
+      </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
