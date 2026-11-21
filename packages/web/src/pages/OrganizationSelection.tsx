@@ -42,10 +42,9 @@ export function OrganizationSelection() {
         .from('organizations')
         .select('id')
         .eq('code', newOrgCode.toUpperCase())
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        // PGRST116 = no rows found (expected if code doesn't exist)
+      if (checkError) {
         throw checkError;
       }
 
