@@ -31,6 +31,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // If user has multiple organizations and none selected, show org selection
   const needsOrgSelection = organizations.length === 0 || (organizations.length > 1 && !currentOrg);
 
+  // Allow access to /select-organization even when currentOrg exists (for creating new orgs)
+  // The OrganizationSelection component handles this case
   if (needsOrgSelection) {
     return <Navigate to="/select-organization" replace />;
   }

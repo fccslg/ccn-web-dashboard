@@ -127,11 +127,12 @@ export function OrganizationSelection() {
   }, [newOrgName, newOrgCode, user, navigate]);
 
   // Effect for auto-redirect when org is selected
+  // Only auto-redirect if we're not intentionally showing the create org form
   useEffect(() => {
-    if (currentOrg && !authLoading) {
+    if (currentOrg && !authLoading && !showCreateOrg && organizations.length > 0) {
       navigate('/dashboard');
     }
-  }, [currentOrg, authLoading, navigate]);
+  }, [currentOrg, authLoading, navigate, showCreateOrg, organizations.length]);
 
   // If no organizations yet (new user), show create org form
   if (organizations.length === 0 && !authLoading) {
