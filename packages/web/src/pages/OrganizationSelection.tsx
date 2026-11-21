@@ -147,6 +147,12 @@ export function OrganizationSelection() {
               Set up your first organization to get started
             </p>
           </div>
+          <div className="text-center text-sm text-gray-600 mb-4">
+            <p>Signed in as {user?.email}</p>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="mt-2">
+              Sign Out
+            </Button>
+          </div>
 
           <Card>
             <CardContent className="p-6">
@@ -205,6 +211,12 @@ export function OrganizationSelection() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-sm text-gray-500">
+          <p>Signed in as {user?.email}</p>
+          <Button variant="ghost" size="sm" onClick={handleSignOut} className="mt-1">
+            Sign Out
+          </Button>
         </div>
       </div>
     );
