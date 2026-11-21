@@ -62,7 +62,7 @@ export function Layout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+          <nav className={`flex-1 px-4 py-4 space-y-1 ${sidebarCollapsed ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             {navigation.map((item) => {
               const hrefActive = location.pathname === item.href ||
                 (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
