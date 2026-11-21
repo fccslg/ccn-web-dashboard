@@ -702,8 +702,8 @@ export function Customers() {
             <h3 className="font-semibold text-gray-900 mb-2">No customers yet</h3>
             <p className="text-gray-500 mb-4">Add your first customer to get started</p>
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => { alert('Add Customer clicked (empty state)'); setAddCustomerModalOpen(true); }} className="w-full sm:w-auto">+ Add Customer</Button>
-              <Button variant="outline" onClick={() => { alert('Import Excel clicked (empty state)'); setImportDropdownOpen(true); }}>
+              <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
+              <Button variant="outline" onClick={() => setImportDropdownOpen(true)}>
                 📥 Import Excel
               </Button>
             </div>
@@ -744,7 +744,7 @@ export function Customers() {
           <p className="text-gray-500 mt-1">Showing {visibleCustomers.length} of {sorted.length} results</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button onClick={() => { alert('Add Customer clicked (main)'); setAddCustomerModalOpen(true); }} className="w-full sm:w-auto">+ Add Customer</Button>
+          <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
           {selectedIds.size > 0 && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={downloadSelectedReport}>
@@ -756,7 +756,7 @@ export function Customers() {
             </div>
           )}
           <div className="relative">
-            <Button variant="outline" onClick={() => { alert('Import Excel dropdown clicked'); setImportDropdownOpen(!importDropdownOpen); }}>
+            <Button variant="outline" onClick={() => setImportDropdownOpen(!importDropdownOpen)}>
               📥 Import Excel
               <svg className="ml-1 w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
