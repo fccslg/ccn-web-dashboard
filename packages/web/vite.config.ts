@@ -16,6 +16,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    minify: 'esbuild',
+    target: 'es2020',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -26,5 +28,7 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
+    _: 'lodash',
+    w: 'lodash',
   },
 });
