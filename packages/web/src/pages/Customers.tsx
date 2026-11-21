@@ -763,7 +763,7 @@ export function Customers() {
               </svg>
             </Button>
             {importDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[60] py-1">
                 <button
                   onClick={() => { downloadSampleExcel(); setImportDropdownOpen(false); }}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
