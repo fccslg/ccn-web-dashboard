@@ -14,6 +14,13 @@ export function OrganizationSelection() {
   const [newOrgCode, setNewOrgCode] = useState('');
   const navigate = useNavigate();
 
+  const handleSignOut = async () => {
+    const { getSupabaseClient } = await import('../shared');
+    const sb = getSupabaseClient();
+    await sb.auth.signOut();
+    navigate('/login');
+  };
+
   // If already has a selected org, redirect to dashboard
   useEffect(() => {
     if (currentOrg && !authLoading) {
@@ -111,6 +118,9 @@ export function OrganizationSelection() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Signed in as {user?.email}
           </p>
+          <Button variant="ghost" size="sm" className="mt-4" onClick={handleSignOut}>
+            Sign Out
+          </Button>
         </div>
 
         <Card>
