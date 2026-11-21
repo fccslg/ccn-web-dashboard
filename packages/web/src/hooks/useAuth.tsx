@@ -25,6 +25,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithOAuth: (provider: OAuthProvider, options?: { redirectTo?: string }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshOrganizations: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -179,6 +180,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshOrganizations = async () => {
+    if (user) {
+      await fetchUserOrganizations(user.id);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     const sb = getSupabaseClient();
     const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -219,7 +226,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentOrg: handleSetCurrentOrg,
       signIn,
       signInWithOAuth,
-      signOut
+      signOut,
+      refreshOrganizations
     }}>
       {children}
     </AuthContext.Provider>

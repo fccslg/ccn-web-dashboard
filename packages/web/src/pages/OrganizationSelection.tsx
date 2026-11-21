@@ -6,7 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
 export function OrganizationSelection() {
-  const { organizations, currentOrg, setCurrentOrg, user, loading: authLoading } = useAuth();
+  const { organizations, currentOrg, setCurrentOrg, user, loading: authLoading, refreshOrganizations } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCreateOrg, setShowCreateOrg] = useState(false);
@@ -119,9 +119,14 @@ export function OrganizationSelection() {
       }
       console.log('Employee record created');
 
-      // Refresh organizations by triggering auth refresh
+      // Clear stored org so user must select from the list
+      localStorage.removeItem('ccn-selected-org');
+
+      // Refresh organizations list
+      await refreshOrganizations();
+
+      // Stay on select-organization page to let user pick the new org
       setShowCreateOrg(false);
-      navigate('/select-organization');
     } catch (err: any) {
       // Better error logging
       console.error('Create org error:', err);
