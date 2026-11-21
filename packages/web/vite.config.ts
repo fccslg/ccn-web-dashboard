@@ -16,19 +16,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    minify: 'terser',
+    minify: 'esbuild',
     target: 'es2020',
-    terserOptions: {
-      compress: {
-        keep_fnames: true,
-        keep_classnames: true,
-      },
-      mangle: {
-        keep_fnames: true,
-        keep_classnames: true,
-        reserved: ['_', 'w', 'handleCreateOrg', 'handleSelectOrg', 'onSubmit'],
-      },
-    },
     rollupOptions: {
       output: {
         manualChunks: {
