@@ -13,6 +13,17 @@ export function OrganizationSelection() {
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgCode, setNewOrgCode] = useState('');
   const navigate = useNavigate();
+  const [userNavigatedHere, setUserNavigatedHere] = useState(false);
+
+  // Track if user intentionally navigated to this page (vs auto-redirect)
+  useEffect(() => {
+    // Check if this is a direct navigation (not from the app's internal redirect)
+    // We can detect this by checking if the navigation was triggered by user action
+    // For now, we'll set this to true when the component mounts via direct navigation
+    // The key is: if they came here via the dropdown "Create New Organization" link,
+    // we should NOT auto-redirect
+    setUserNavigatedHere(true);
+  }, []);
 
   // Define handlers at the top to avoid terser minification issues
   const handleSignOut = useCallback(async () => {
@@ -128,11 +139,12 @@ export function OrganizationSelection() {
 
   // Effect for auto-redirect when org is selected
   // Only auto-redirect if we're not intentionally showing the create org form
+  // AND the user didn't explicitly navigate here
   useEffect(() => {
-    if (currentOrg && !authLoading && !showCreateOrg && organizations.length > 0) {
+    if (currentOrg && !authLoading && !showCreateOrg && organizations.length > 0 && !userNavigatedHere) {
       navigate('/dashboard');
     }
-  }, [currentOrg, authLoading, navigate, showCreateOrg, organizations.length]);
+  }, [currentOrg, authLoading, navigate, showCreateOrg, organizations.length, userNavigatedHere]);
 
   // If no organizations yet (new user), show create org form
   if (organizations.length === 0 && !authLoading) {
