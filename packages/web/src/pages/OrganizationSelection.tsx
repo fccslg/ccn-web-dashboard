@@ -81,6 +81,7 @@ export function OrganizationSelection() {
         .insert({
           user_id: user.id,
           organization_id: orgId,
+          name: user.email?.split('@')[0] || newOrgName || 'Owner',
           role: 'owner',
           permissions: {
             can_manage_employees: true,
