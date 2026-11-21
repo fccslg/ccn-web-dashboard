@@ -66,7 +66,7 @@ interface ImportPreview {
 
 export function Customers() {
   // DEBUG: Simple log to verify component execution
-  console.log('Customers component rendering v2');
+  console.log('Customers component rendering v7');
 
   // DEBUG: Log every render with state values
   useEffect(() => {
