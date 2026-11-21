@@ -11,23 +11,9 @@ import type { Database } from './database.types';
 // ============================================
 
 // Support both Vite (import.meta.env) and Node (process.env) environments
-function getEnv(key: string): string | undefined {
-  // For Node.js/tsx environments
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key];
-  }
-  // For browser/Vite environments - use type assertion
-  if (typeof globalThis !== 'undefined') {
-    const g = globalThis as { importMeta?: { env?: Record<string, string> } };
-    if (g.importMeta?.env) {
-      return g.importMeta.env[key];
-    }
-  }
-  return undefined;
-}
-
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
-const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+// Helper removed to avoid complexity in build-time replacement
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hntbgypndjyksgjbgjtj.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_ajMALhRIkriWPTuiTO53rQ_wLP81w0x';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn('[Supabase] Missing environment variables. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
