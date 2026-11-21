@@ -16,5 +16,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['lodash'],
+        },
+      },
+    },
+  },
+  define: {
+    global: 'globalThis',
   },
 });
