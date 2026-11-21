@@ -66,12 +66,7 @@ interface ImportPreview {
 
 export function Customers() {
   // DEBUG: Simple log to verify component execution
-  console.log('Customers component rendering v7');
-
-  // DEBUG: Log every render with state values
-  useEffect(() => {
-    console.log('Customers rendered, addCustomerModalOpen:', addCustomerModalOpen, 'importModalOpen:', importModalOpen);
-  }, [addCustomerModalOpen, importModalOpen]);
+  console.log('Customers component rendering v11');
 
   const [search, setSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
