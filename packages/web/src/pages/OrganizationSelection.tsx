@@ -71,9 +71,13 @@ export function OrganizationSelection() {
         .select('id')
         .single();
 
-      if (orgError) throw orgError;
+      if (orgError) {
+        console.error('Org insert error:', orgError);
+        throw new Error(`Organization creation failed: ${orgError.message}`);
+      }
 
       const orgId = (orgData as OrgInsert).id;
+      console.log('Organization created:', orgId);
 
       // Create employee record linking user to new org as owner
       const { error: empError } = await sb
@@ -96,18 +100,25 @@ export function OrganizationSelection() {
           is_active: true,
         } as any);
 
-      if (empError) throw empError;
+      if (empError) {
+        console.error('Employee insert error:', empError);
+        // Try to clean up the org we just created
+        await sb.from('organizations').delete().eq('id', orgId);
+        throw new Error(`Employee record creation failed: ${empError.message}`);
+      }
+      console.log('Employee record created');
 
       // Refresh organizations by triggering auth refresh
       setShowCreateOrg(false);
       navigate('/select-organization');
     } catch (err: any) {
       // Better error logging
+      console.error('Create org error:', err);
       if (err?.message) {
-        console.error('Create org error:', err.message);
-        console.error('Error details:', JSON.stringify(err, null, 2));
-      } else {
-        console.error('Failed to create organization:', err);
+        console.error('Error message:', err.message);
+      }
+      if (err?.code) {
+        console.error('Error code:', err.code);
       }
       setError(err instanceof Error ? err.message : 'Failed to create organization');
     } finally {
