@@ -65,6 +65,9 @@ interface ImportPreview {
 }
 
 export function Customers() {
+  // DEBUG: Simple log to verify component execution
+  console.log('Customers component rendering');
+
   const [search, setSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
   const [sortColumn, setSortColumn] = useState<keyof CustomerWithDue | null>(null);
