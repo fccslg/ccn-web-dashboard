@@ -569,6 +569,33 @@ export function Customers() {
     );
   }
 
+  // Empty state
+  if (sorted.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+            <p className="text-gray-500 mt-1">No customers found</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="text-4xl mb-2">👥</div>
+            <h3 className="font-semibold text-gray-900 mb-2">No customers yet</h3>
+            <p className="text-gray-500 mb-4">Add your first customer to get started</p>
+            <div className="flex gap-2 justify-center">
+              <Button className="w-full sm:w-auto">+ Add Customer</Button>
+              <Button variant="outline" onClick={() => setImportDropdownOpen(true)}>
+                📥 Import Excel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Selection handlers (defined after visibleCustomers)
   const isAllSelected = visibleCustomers.length > 0 && visibleCustomers.every(c => selectedIds.has(c.id));
   // const isIndeterminate = visibleCustomers.some(c => selectedIds.has(c.id)) && !isAllSelected;
