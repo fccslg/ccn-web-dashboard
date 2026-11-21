@@ -85,7 +85,14 @@ export function OrganizationSelection() {
       // Refresh organizations by triggering auth refresh
       setShowCreateOrg(false);
       navigate('/select-organization');
-    } catch (err) {
+    } catch (err: any) {
+      // Better error logging
+      if (err?.message) {
+        console.error('Create org error:', err.message);
+        console.error('Error details:', JSON.stringify(err, null, 2));
+      } else {
+        console.error('Failed to create organization:', err);
+      }
       setError(err instanceof Error ? err.message : 'Failed to create organization');
     } finally {
       setLoading(false);

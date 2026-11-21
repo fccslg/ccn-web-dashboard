@@ -156,8 +156,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentOrg(null);
         setStoredOrgId(null);
       }
-    } catch (err) {
-      console.error('Failed to fetch organizations:', err);
+    } catch (err: any) {
+      // Better error logging
+      if (err?.message) {
+        console.error('Fetch organizations error:', err.message);
+      } else if (err?.status === 403 || err?.status === 500) {
+        console.error('RLS/Policy error:', JSON.stringify(err, null, 2));
+      } else {
+        console.error('Failed to fetch organizations:', err);
+      }
     } finally {
       setOrgsLoading(false);
     }
