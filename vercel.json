@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm install && pnpm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "pnpm install && pnpm --filter web run build",
+  "outputDirectory": "packages/web/dist",
   "framework": "vite",
   "installCommand": "pnpm install",
   "devCommand": "pnpm dev",
