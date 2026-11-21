@@ -87,8 +87,8 @@ export function Customers() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Add Customer modal state
-  const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
+  // Add Customer inline state
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const [newCustomerPortalId, setNewCustomerPortalId] = useState('');
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerMobile, setNewCustomerMobile] = useState('');
@@ -533,7 +533,7 @@ export function Customers() {
       }
 
       setAllCustomers(customersWithDue);
-      setAddCustomerModalOpen(false);
+      setIsAddingCustomer(false);
       setNewCustomerPortalId('');
       setNewCustomerName('');
       setNewCustomerMobile('');
@@ -748,7 +748,7 @@ export function Customers() {
     <div className="space-y-6">
       {/* DEBUG: Show modal state - inline at top */}
       <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded text-sm font-mono">
-        <div>Add Customer Modal: {addCustomerModalOpen ? 'OPEN' : 'CLOSED'}</div>
+        <div>Adding Customer: {isAddingCustomer ? 'YES' : 'NO'}</div>
         <div>Import Modal: {importModalOpen ? 'OPEN' : 'CLOSED'}</div>
       </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -757,7 +757,9 @@ export function Customers() {
           <p className="text-gray-500 mt-1">Showing {visibleCustomers.length} of {sorted.length} results</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
+          <Button onClick={() => setIsAddingCustomer(!isAddingCustomer)} className="w-full sm:w-auto">
+            {isAddingCustomer ? 'Cancel' : '+ Add Customer'}
+          </Button>
           {selectedIds.size > 0 && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={downloadSelectedReport}>
@@ -835,6 +837,77 @@ export function Customers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
+                {/* Add Customer Inline Row */}
+                {isAddingCustomer && (
+                  <tr className="bg-blue-50">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        disabled
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 opacity-50 cursor-not-allowed"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Input
+                        value={newCustomerPortalId}
+                        onChange={(e) => setNewCustomerPortalId(e.target.value.toUpperCase())}
+                        placeholder="Portal ID (LCOID)"
+                        required
+                        className="w-full"
+                        autoFocus
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Input
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        placeholder="Customer Name"
+                        required
+                        className="w-full"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Input
+                        value={newCustomerMobile}
+                        onChange={(e) => setNewCustomerMobile(e.target.value)}
+                        placeholder="Mobile"
+                        className="w-full"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Input
+                        value={newCustomerLocation}
+                        onChange={(e) => setNewCustomerLocation(e.target.value)}
+                        placeholder="Location"
+                        className="w-full"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => { setIsAddingCustomer(false); setAddCustomerError(null); }}
+                          disabled={addCustomerLoading}
+                          className="px-3 py-1.5 text-sm"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleAddCustomer}
+                          disabled={addCustomerLoading || !newCustomerName || !newCustomerPortalId}
+                          className="px-3 py-1.5 text-sm"
+                        >
+                          {addCustomerLoading ? 'Adding...' : 'Add'}
+                        </Button>
+                      </div>
+                      {addCustomerError && (
+                        <div className="mt-1 text-xs text-red-600">
+                          {addCustomerError}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
                 {visibleCustomers.map((c, index) => (
                   <tr
                     key={c.id}
@@ -999,122 +1072,7 @@ export function Customers() {
         </div>
       )}
 
-      {/* Add Customer Modal */}
-      {addCustomerModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ outline: '3px solid red', outlineOffset: '-3px', backgroundColor: 'rgba(255,0,0,0.1)' }}>
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50" onClick={() => setAddCustomerModalOpen(false)} />
-            <Card className="relative w-full max-w-md">
-              <CardHeader className="border-b border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle>Add New Customer</CardTitle>
-                  <button onClick={() => { setAddCustomerModalOpen(false); setAddCustomerError(null); }} className="p-1 hover:bg-gray-100 rounded">
-                    ✕
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 space-y-4">
-                {addCustomerError && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                    {addCustomerError}
-                  </div>
-                )}
-                <form onSubmit={(e) => { e.preventDefault(); handleAddCustomer(); }}>
-                  <div>
-                    <label htmlFor="customer-portal-id" className="block text-sm font-medium text-gray-700 mb-1">
-                      Portal Customer ID (LCOID)
-                    </label>
-                    <Input
-                      id="customer-portal-id"
-                      value={newCustomerPortalId}
-                      onChange={(e) => setNewCustomerPortalId(e.target.value.toUpperCase())}
-                      placeholder="e.g., 100"
-                      required
-                      autoFocus
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customer-name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
-                    </label>
-                    <Input
-                      id="customer-name"
-                      value={newCustomerName}
-                      onChange={(e) => setNewCustomerName(e.target.value)}
-                      placeholder="e.g., John Doe"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customer-mobile" className="block text-sm font-medium text-gray-700 mb-1">
-                      Mobile
-                    </label>
-                    <Input
-                      id="customer-mobile"
-                      value={newCustomerMobile}
-                      onChange={(e) => setNewCustomerMobile(e.target.value)}
-                      placeholder="e.g., 9832433875"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customer-address" className="block text-sm font-medium text-gray-700 mb-1">
-                      Address
-                    </label>
-                    <Input
-                      id="customer-address"
-                      value={newCustomerAddress}
-                      onChange={(e) => setNewCustomerAddress(e.target.value)}
-                      placeholder="e.g., BC Colony, Siliguri"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customer-location" className="block text-sm font-medium text-gray-700 mb-1">
-                      Location
-                    </label>
-                    <Input
-                      id="customer-location"
-                      value={newCustomerLocation}
-                      onChange={(e) => setNewCustomerLocation(e.target.value)}
-                      placeholder="e.g., BC Colony"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customer-cable-ref" className="block text-sm font-medium text-gray-700 mb-1">
-                      Cable Reference ID
-                    </label>
-                    <Input
-                      id="customer-cable-ref"
-                      value={newCustomerCableRefId}
-                      onChange={(e) => setNewCustomerCableRefId(e.target.value)}
-                      placeholder="e.g., STB12345"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customer-internet-ref" className="block text-sm font-medium text-gray-700 mb-1">
-                      Internet Reference ID
-                    </label>
-                    <Input
-                      id="customer-internet-ref"
-                      value={newCustomerInternetRefId}
-                      onChange={(e) => setNewCustomerInternetRefId(e.target.value)}
-                      placeholder="e.g., FCC036"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-4 border-t border-gray-200">
-                    <Button variant="outline" onClick={() => { setAddCustomerModalOpen(false); setAddCustomerError(null); }} className="flex-1">
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={addCustomerLoading}>
-                      {addCustomerLoading ? 'Adding...' : 'Add Customer'}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
   );
 }
 // rebuild: Sun, Nov 22, 2026 12:54:26 AM
