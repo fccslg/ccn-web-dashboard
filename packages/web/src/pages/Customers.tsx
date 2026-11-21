@@ -163,7 +163,7 @@ export function Customers() {
     }
 
     fetchCustomers();
-  }, []);
+  }, [currentOrg]);
 
   // Handle file change for import
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
