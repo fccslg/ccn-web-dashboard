@@ -104,8 +104,8 @@ export function Customers() {
 
   // DEBUG: Log every render with state values
   useEffect(() => {
-    console.log('Customers rendered, addCustomerModalOpen:', addCustomerModalOpen, 'importModalOpen:', importModalOpen);
-  }, [addCustomerModalOpen, importModalOpen]);
+    console.log('Customers rendered, isAddingCustomer:', isAddingCustomer, 'importModalOpen:', importModalOpen);
+  }, [isAddingCustomer, importModalOpen]);
 
   // Fetch customers from Supabase
   useEffect(() => {
@@ -710,7 +710,7 @@ export function Customers() {
             <h3 className="font-semibold text-gray-900 mb-2">No customers yet</h3>
             <p className="text-gray-500 mb-4">Add your first customer to get started</p>
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
+              <Button onClick={() => setIsAddingCustomer(!isAddingCustomer)} className="w-full sm:w-auto">{isAddingCustomer ? 'Cancel' : '+ Add Customer'}</Button>
               <Button variant="outline" onClick={() => setImportDropdownOpen(true)}>
                 📥 Import Excel
               </Button>
