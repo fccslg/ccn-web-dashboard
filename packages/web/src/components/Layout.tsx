@@ -91,7 +91,7 @@ export function Layout() {
 
           {/* User info & Sign out */}
           <div className={`p-4 border-t border-gray-200 transition-all duration-300 ${sidebarCollapsed ? 'px-2' : ''}`}>
-            <div className="flex items-center mb-3">
+            <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
               <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
                 <span className="text-sm font-medium text-indigo-700">
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
@@ -105,9 +105,6 @@ export function Layout() {
                   <p className="text-xs text-gray-500 truncate">Administrator</p>
                 </div>
               )}
-              {sidebarCollapsed && (
-                <div className="ml-2 opacity-0 w-0 overflow-hidden">Hidden</div>
-              )}
             </div>
             <button
               onClick={signOut}
@@ -116,9 +113,9 @@ export function Layout() {
               }`}
               title={sidebarCollapsed ? 'Sign Out' : undefined}
             >
-              <span className="mr-3 flex-shrink-0">🚪</span>
+              <span className={`flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-3'}`}>🚪</span>
               {!sidebarCollapsed && <span className="transition-opacity duration-200 opacity-100">Sign Out</span>}
-              {sidebarCollapsed && <span className="opacity-0">Sign Out</span>}
+              {sidebarCollapsed && <span className="sr-only">Sign Out</span>}
             </button>
           </div>
         </div>
