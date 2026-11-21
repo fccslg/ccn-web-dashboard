@@ -1,14 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getSupabaseClient } from '../shared/api/supabase';
-import type { Database } from '../shared/api/database.types';
-
-type OrgRow = Database['public']['Tables']['organizations']['Row'];
 
 export function Login() {
-  const [orgId, setOrgId] = useState('');
-  const [orgName, setOrgName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,46 +10,18 @@ export function Login() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch organization name when orgId changes
-  useEffect(() => {
-    if (orgId && orgId.length >= 36) {
-      fetchOrgName(orgId);
-    } else {
-      setOrgName('');
-    }
-  }, [orgId]);
-
-  const fetchOrgName = async (id: string) => {
-    try {
-      const sb = getSupabaseClient();
-      const { data, error } = await sb
-        .from('organizations')
-        .select('name, code')
-        .eq('id', id)
-        .single();
-      if (!error && data) {
-        const org = data as OrgRow;
-        setOrgName(`${org.name} (${org.code})`);
-      } else {
-        setOrgName('Organization not found');
-      }
-    } catch {
-      setOrgName('Error fetching organization');
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const { error } = await signIn(email, password, orgId);
+      const { error } = await signIn(email, password);
       if (error) {
         setError(error.message);
         setLoading(false);
       } else {
-        navigate('/dashboard');
+        navigate('/select-organization');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -84,26 +50,6 @@ export function Login() {
           )}
 
           <div className="space-y-4">
-            <div>
-              <label htmlFor="orgId" className="block text-sm font-medium text-gray-700 mb-1">
-                Organization ID
-              </label>
-              <input
-                id="orgId"
-                name="orgId"
-                type="text"
-                autoComplete="organization"
-                required
-                value={orgId}
-                onChange={(e) => setOrgId(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10"
-                placeholder="e.g., 11111111-1111-1111-1111-111111111111"
-              />
-              {orgName && (
-                <p className="mt-1 text-sm text-gray-600">{orgName}</p>
-              )}
-            </div>
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email address
@@ -163,7 +109,6 @@ export function Login() {
         <div className="text-center text-sm text-gray-500">
           <p>Demo credentials:</p>
           <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded mt-1">
-            Org: 11111111-1111-1111-1111-111111111111<br />
             admin@ccn.local / password123
           </p>
         </div>
