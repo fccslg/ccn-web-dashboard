@@ -6,7 +6,7 @@ import { Select } from '../components/ui/Select';
 import { formatINR, toPaise } from '../shared';
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState<'general' | 'employees' | 'plans' | 'categories' | 'sync'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'employees' | 'plans' | 'categories' | 'sync' | 'danger'>('general');
 
   const tabs = [
     { id: 'general', label: 'General' },
@@ -14,6 +14,7 @@ export function Settings() {
     { id: 'plans', label: 'Service Plans' },
     { id: 'categories', label: 'Categories' },
     { id: 'sync', label: 'Sync & Backup' },
+    { id: 'danger', label: 'Danger Zone' },
   ];
 
   return (
@@ -52,6 +53,7 @@ export function Settings() {
       {activeTab === 'plans' && <PlanSettings />}
       {activeTab === 'categories' && <CategorySettings />}
       {activeTab === 'sync' && <SyncSettings />}
+      {activeTab === 'danger' && <DangerZone />}
     </div>
   );
 }
@@ -452,6 +454,163 @@ function SyncSettings() {
           <div className="flex gap-4">
             <Button variant="outline">Clear Offline Cache</Button>
             <Button variant="outline" className="ml-auto">Rebuild Cache</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DangerZone() {
+  const [confirmText, setConfirmText] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const OWNER_PASSWORD = 'CCN36@Owner2024!'; // Strong password for data clearing
+
+  const handleClearAllData = async () => {
+    if (confirmText !== 'DELETE ALL DATA') {
+      setError('Please type "DELETE ALL DATA" to confirm');
+      return;
+    }
+
+    if (password !== OWNER_PASSWORD) {
+      setError('Incorrect owner password');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      const sb = (await import('../shared')).getSupabaseClient();
+
+      // Delete all data in correct order (respecting foreign keys)
+      const tables = [
+        'payment_transactions',
+        'billing_records',
+        'cashbook_entries',
+        'daily_summaries',
+        'customer_accounts',
+        'customers',
+        'service_plans',
+        'employees',
+        'organizations',
+        'audit_logs',
+        'sync_operations',
+        'import_batches',
+      ];
+
+      for (const table of tables) {
+        const { error: deleteError } = await sb
+          .from(table)
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+        if (deleteError) {
+          console.error(`Error deleting ${table}:`, deleteError);
+          throw deleteError;
+        }
+      }
+
+      setSuccess(true);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clear data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 space-y-6">
+      <Card className="border-red-200">
+        <CardHeader>
+          <CardTitle className="text-red-600 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Danger Zone
+          </CardTitle>
+          <p className="text-gray-500 mt-1">Irreversible destructive actions. Proceed with extreme caution.</p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h3 className="font-medium text-red-800 mb-2">Clear All Application Data</h3>
+            <p className="text-sm text-red-700 mb-4">
+              This will permanently delete ALL data including:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>All customers and their accounts</li>
+                <li>All billing records and payment transactions</li>
+                <li>All cashbook entries and daily summaries</li>
+                <li>All service plans and employee records</li>
+                <li>All organizations and audit logs</li>
+              </ul>
+              <strong>This action CANNOT be undone.</strong>
+            </p>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm">
+                All data has been permanently deleted.
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-red-700 mb-1">
+                  Type "DELETE ALL DATA" to confirm
+                </label>
+                <Input
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder='Type "DELETE ALL DATA"'
+                  disabled={success || loading}
+                  className="bg-white border-red-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-red-700 mb-1">
+                  Owner Password
+                </label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter owner password"
+                  disabled={success || loading}
+                  className="bg-white border-red-300"
+                />
+              </div>
+
+              <Button
+                onClick={handleClearAllData}
+                disabled={loading || success}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                variant="danger"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Deleting...
+                  </span>
+                ) : (
+                  'Delete All Data Permanently'
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
