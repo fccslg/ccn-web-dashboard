@@ -24,7 +24,9 @@ export default defineConfig({
         keep_classnames: true,
       },
       mangle: {
-        reserved: ['_', 'w'],
+        keep_fnames: true,
+        keep_classnames: true,
+        reserved: ['_', 'w', 'handleCreateOrg', 'handleSelectOrg', 'onSubmit'],
       },
     },
     rollupOptions: {
