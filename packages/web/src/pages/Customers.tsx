@@ -696,7 +696,7 @@ export function Customers() {
                     <td className="px-6 py-4 font-medium">{c.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{c.mobile || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{c.location || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium {c.due < 0 ? 'text-red-600' : c.due > 0 ? 'text-green-600' : 'text-gray-900'}">
+                    <td className={`px-6 py-4 text-sm text-right font-medium ${c.due < 0 ? 'text-red-600' : c.due > 0 ? 'text-green-600' : 'text-gray-900'}`}>
                       {formatINR(Math.abs(c.due))}
                     </td>
                   </tr>
