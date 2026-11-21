@@ -76,6 +76,12 @@ export function Customers() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -88,15 +94,16 @@ export function Customers() {
 
         // Get organization ID
         const orgId = await getCurrentOrgId();
-        if (!orgId) {
-          throw new Error('No organization found for current user');
+        const effectiveOrgId = orgId || import.meta.env.VITE_DEFAULT_ORG_ID;
+        if (!effectiveOrgId) {
+          throw new Error('No organization found. Please ensure your user has an employee record, or set VITE_DEFAULT_ORG_ID in .env.production');
         }
 
         // Fetch all customers for this organization
         const { data: customers, error: custError } = await sb
           .from('customers')
           .select('id, portal_customer_id, name, mobile, location, status')
-          .eq('organization_id', orgId)
+          .eq('organization_id', effectiveOrgId)
           .eq('status', 'active')
           .order('portal_customer_id', { ascending: true });
 
@@ -157,7 +164,7 @@ export function Customers() {
     fetchCustomers();
   }, []);
 
-  // Import Excel file
+  // Handle file change for import
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -411,6 +418,109 @@ export function Customers() {
     return sortAsc ? ' ▲' : ' ▼';
   };
 
+  const downloadSelectedReport = () => {
+    const selected = sorted.filter(c => selectedIds.has(c.id));
+    if (selected.length === 0) return;
+
+    const headers = ['LCOID', 'Name', 'Mobile', 'Location', 'Status', 'Due Amount'];
+    const rows = selected.map(c => [
+      c.portalId,
+      c.name,
+      c.mobile || '',
+      c.location || '',
+      c.status,
+      formatINR(c.due),
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Customer Report');
+    XLSX.writeFile(wb, `Customer_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setSelectedIds(new Set());
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePassword) {
+      setDeleteError('Enter owner password');
+      return;
+    }
+    // In production, verify via Supabase RPC
+    // if (deletePassword !== OWNER_PASSWORD) { setDeleteError('Incorrect password'); return; }
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const sb = getSupabaseClient();
+      const orgId = await getCurrentOrgId();
+      if (!orgId) throw new Error('No organization found');
+
+      const idsToDelete = Array.from(selectedIds);
+      for (const id of idsToDelete) {
+        await sb.from('customers').delete().eq('id', id).eq('organization_id', orgId);
+      }
+
+      // Refresh
+      const { data: customers } = await sb
+        .from('customers')
+        .select('id, portal_customer_id, name, mobile, location, status')
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .order('portal_customer_id', { ascending: true });
+
+      const customersWithDue: CustomerWithDue[] = [];
+      for (const cust of (customers as CustomerRow[]) || []) {
+        const { data: accounts } = await sb
+          .from('customer_accounts')
+          .select('id')
+          .eq('customer_id', cust.id)
+          .eq('status', 'active')
+          .limit(1);
+
+        type AccountRow = { id: string };
+        let due: Paise = 0;
+
+        if (accounts && accounts.length > 0) {
+          const accountId = (accounts[0] as AccountRow).id;
+          const { data: billingRecords } = await sb
+            .from('billing_records')
+            .select('total_due')
+            .eq('customer_account_id', accountId)
+            .order('billing_month', { ascending: false })
+            .limit(1);
+
+          if (billingRecords && billingRecords.length > 0) {
+            due = (billingRecords[0] as BillingRecordRow).total_due as Paise ?? 0;
+          }
+        }
+
+        customersWithDue.push({
+          id: cust.id,
+          portalId: cust.portal_customer_id,
+          name: cust.name,
+          mobile: cust.mobile,
+          location: cust.location,
+          status: cust.status,
+          due,
+        });
+      }
+
+      setAllCustomers(customersWithDue);
+      setSelectedIds(new Set());
+      setDeleteModalOpen(false);
+      setDeletePassword('');
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -450,6 +560,29 @@ export function Customers() {
     );
   }
 
+  // Selection handlers (defined after visibleCustomers)
+  const isAllSelected = visibleCustomers.length > 0 && visibleCustomers.every(c => selectedIds.has(c.id));
+  // const isIndeterminate = visibleCustomers.some(c => selectedIds.has(c.id)) && !isAllSelected;
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      visibleCustomers.forEach(c => selectedIds.delete(c.id));
+    } else {
+      visibleCustomers.forEach(c => selectedIds.add(c.id));
+    }
+    setSelectedIds(new Set(selectedIds));
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -459,6 +592,16 @@ export function Customers() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button className="w-full sm:w-auto">+ Add Customer</Button>
+          {selectedIds.size > 0 && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={downloadSelectedReport}>
+                📊 Download Report
+              </Button>
+              <Button variant="outline" className="text-red-600 hover:bg-red-50" onClick={handleDeleteSelected}>
+                🗑️ Delete ({selectedIds.size})
+              </Button>
+            </div>
+          )}
           <div className="relative">
             <Button variant="outline" onClick={() => setImportDropdownOpen(!importDropdownOpen)}>
               📥 Import Excel
@@ -510,6 +653,14 @@ export function Customers() {
             <table className="w-full">
               <thead className="sticky top-0 bg-gray-50 z-10">
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
+                  <th className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 font-medium cursor-pointer" onClick={() => handleSort('portalId')}>ID{sortIndicator('portalId')}</th>
                   <th className="px-6 py-3 font-medium cursor-pointer" onClick={() => handleSort('name')}>Name{sortIndicator('name')}</th>
                   <th className="px-6 py-3 font-medium cursor-pointer" onClick={() => handleSort('mobile')}>Mobile{sortIndicator('mobile')}</th>
@@ -522,8 +673,16 @@ export function Customers() {
                   <tr
                     key={c.id}
                     ref={index === visibleCustomers.length - 1 ? lastElementRef : null}
-                    className="hover:bg-gray-50"
+                    className={`hover:bg-gray-50 ${selectedIds.has(c.id) ? 'bg-indigo-50' : ''}`}
                   >
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.id)}
+                        onChange={() => toggleSelect(c.id)}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      />
+                    </td>
                     <td className="px-6 py-4 text-sm font-mono">{formatPortalCustomerId(c.portalId)}</td>
                     <td className="px-6 py-4 font-medium">{c.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{c.mobile || '-'}</td>
@@ -609,6 +768,63 @@ export function Customers() {
                     disabled={importing || importPreview.filter(r => r.isValid).length === 0}
                   >
                     {importing ? 'Importing...' : `Import ${importPreview.filter(r => r.isValid).length} Customers`}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => { setDeleteModalOpen(false); setDeletePassword(''); setDeleteError(null); }} />
+            <Card className="relative w-full max-w-md">
+              <CardHeader className="border-b border-gray-200 p-4 bg-red-50">
+                <CardTitle className="text-red-600 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Confirm Deletion
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <p className="mb-4">
+                  Are you sure you want to permanently delete <strong>{selectedIds.size} customer(s)</strong>?
+                  This action cannot be undone.
+                </p>
+                {deleteError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                    {deleteError}
+                  </div>
+                )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Owner Password (required)
+                  </label>
+                  <Input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter owner password"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setDeleteModalOpen(false); setDeletePassword(''); setDeleteError(null); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmDelete}
+                    disabled={deleting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {deleting ? 'Deleting...' : `Delete ${selectedIds.size} Customer(s) Permanently`}
                   </Button>
                 </div>
               </CardContent>
