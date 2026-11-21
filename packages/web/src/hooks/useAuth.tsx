@@ -18,6 +18,7 @@ interface UserOrganization {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  orgsLoading: boolean;
   organizations: UserOrganization[];
   currentOrg: UserOrganization | null;
   setCurrentOrg: (org: UserOrganization | null) => void;
@@ -50,6 +51,7 @@ function setStoredOrgId(orgId: string | null) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [orgsLoading, setOrgsLoading] = useState(false);
   const [organizations, setOrganizations] = useState<UserOrganization[]>([]);
   const [currentOrg, setCurrentOrg] = useState<UserOrganization | null>(null);
 
@@ -83,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserOrganizations = async (userId: string) => {
     try {
+      setOrgsLoading(true);
       const sb = getSupabaseClient();
 
       // Get user's employee records with organization details
@@ -141,6 +144,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Failed to fetch organizations:', err);
+    } finally {
+      setOrgsLoading(false);
     }
   };
 
@@ -187,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user,
       loading,
+      orgsLoading,
       organizations,
       currentOrg,
       setCurrentOrg: handleSetCurrentOrg,
