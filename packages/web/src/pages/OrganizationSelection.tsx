@@ -13,7 +13,8 @@ export function OrganizationSelection() {
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgCode, setNewOrgCode] = useState('');
   const navigate = useNavigate();
-  const [userNavigatedHere, setUserNavigatedHere] = useState(true);
+  // userNavigatedHere defaults to true so auto-redirect doesn't run on intentional navigation
+  const [userNavigatedHere] = useState(true);
 
   // Define handlers at the top to avoid terser minification issues
   const handleSignOut = useCallback(async () => {
