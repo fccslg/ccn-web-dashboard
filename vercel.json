@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && pnpm --filter web run build",
+  "buildCommand": "pnpm install && pnpm --filter @ccn/web run build",
   "outputDirectory": "packages/web/dist",
   "framework": "vite",
   "installCommand": "pnpm install",
