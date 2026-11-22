@@ -535,7 +535,7 @@ export function Customers() {
       }
 
       setAllCustomers(customersWithDue);
-      setIsAddingCustomer(false);
+      setAddCustomerModalOpen(false);
       setNewCustomerPortalId('');
       setNewCustomerName('');
       setNewCustomerMobile('');
