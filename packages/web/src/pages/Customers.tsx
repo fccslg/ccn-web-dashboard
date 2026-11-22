@@ -104,8 +104,8 @@ export function Customers() {
 
   // DEBUG: Log every render with state values
   useEffect(() => {
-    console.log('Customers rendered, isAddingCustomer:', isAddingCustomer, 'importModalOpen:', importModalOpen);
-  }, [isAddingCustomer, importModalOpen]);
+    console.log('Customers rendered, addCustomerModalOpen:', addCustomerModalOpen, 'importModalOpen:', importModalOpen);
+  }, [addCustomerModalOpen, importModalOpen]);
 
   // Fetch customers from Supabase
   useEffect(() => {
@@ -696,8 +696,8 @@ export function Customers() {
     );
   }
 
-  // Empty state - still show the table with inline add row
-  if (sorted.length === 0 && !isAddingCustomer) {
+  // Empty state - still show the table with modal
+  if (sorted.length === 0 && !addCustomerModalOpen) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
