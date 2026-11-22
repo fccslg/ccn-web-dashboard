@@ -87,8 +87,8 @@ export function Customers() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Add Customer inline state
-  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+  // Add Customer modal state
+  const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
   const [newCustomerPortalId, setNewCustomerPortalId] = useState('');
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerMobile, setNewCustomerMobile] = useState('');
@@ -712,7 +712,7 @@ export function Customers() {
             <h3 className="font-semibold text-gray-900 mb-2">No customers yet</h3>
             <p className="text-gray-500 mb-4">Add your first customer to get started</p>
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => setIsAddingCustomer(true)} className="w-full sm:w-auto">+ Add Customer</Button>
+              <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
               <Button variant="outline" onClick={() => setImportDropdownOpen(true)}>
                 📥 Import Excel
               </Button>
@@ -750,7 +750,7 @@ export function Customers() {
     <div className="space-y-6">
       {/* DEBUG: Show modal state - inline at top */}
       <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded text-sm font-mono">
-        <div>Adding Customer: {isAddingCustomer ? 'YES' : 'NO'}</div>
+        <div>Add Customer Modal: {addCustomerModalOpen ? 'OPEN' : 'CLOSED'}</div>
         <div>Import Modal: {importModalOpen ? 'OPEN' : 'CLOSED'}</div>
       </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -759,9 +759,7 @@ export function Customers() {
           <p className="text-gray-500 mt-1">Showing {visibleCustomers.length} of {sorted.length} results</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button onClick={() => setIsAddingCustomer(!isAddingCustomer)} className="w-full sm:w-auto">
-            {isAddingCustomer ? 'Cancel' : '+ Add Customer'}
-          </Button>
+          <Button onClick={() => setAddCustomerModalOpen(true)} className="w-full sm:w-auto">+ Add Customer</Button>
           {selectedIds.size > 0 && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={downloadSelectedReport}>
@@ -840,118 +838,6 @@ export function Customers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {/* Add Customer Inline Row */}
-                {isAddingCustomer && (
-                  <tr className="bg-blue-50">
-                    <td className="px-4 py-4">
-                      <input
-                        type="checkbox"
-                        disabled
-                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 opacity-50 cursor-not-allowed"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        ref={(el) => { if (el) el.focus(); }}
-                        value={newCustomerPortalId}
-                        onChange={(e) => setNewCustomerPortalId(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newCustomerName) handleAddCustomer();
-                          if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); }
-                        }}
-                        onBlur={() => { if (!newCustomerPortalId) setAddCustomerError('Portal ID is required'); else setAddCustomerError(null); }}
-                        placeholder="Portal ID (LCOID)"
-                        required
-                        className={`w-full ${!newCustomerPortalId && addCustomerError ? 'border-red-500 focus:ring-red-500' : ''}`}
-                        aria-label="Portal ID (LCOID) - required"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={newCustomerName}
-                        onChange={(e) => setNewCustomerName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddCustomer();
-                          if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); }
-                        }}
-                        onBlur={() => { if (!newCustomerName && addCustomerError) setAddCustomerError('Name is required'); else if (!addCustomerError) setAddCustomerError(null); }}
-                        placeholder="Customer Name"
-                        required
-                        className={`w-full ${!newCustomerName && addCustomerError ? 'border-red-500 focus:ring-red-500' : ''}`}
-                        aria-label="Customer Name - required"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={newCustomerMobile}
-                        onChange={(e) => setNewCustomerMobile(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomer(); if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); } }}
-                        placeholder="Mobile"
-                        className="w-full"
-                        aria-label="Mobile (optional)"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={newCustomerLocation}
-                        onChange={(e) => setNewCustomerLocation(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomer(); if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); } }}
-                        placeholder="Location"
-                        className="w-full"
-                        aria-label="Location (optional)"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          onClick={() => { setIsAddingCustomer(false); setAddCustomerError(null); }}
-                          disabled={addCustomerLoading}
-                          className="px-3 py-1.5 text-sm"
-                          onKeyDown={(e) => { if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); } }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleAddCustomer}
-                          disabled={addCustomerLoading || !newCustomerName || !newCustomerPortalId}
-                          className="px-3 py-1.5 text-sm"
-                        >
-                          {addCustomerLoading ? 'Adding...' : 'Add'}
-                        </Button>
-                      </div>
-                      {addCustomerError && (
-                        <div className="mt-1 text-xs text-red-600">
-                          {addCustomerError}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          onClick={() => { setIsAddingCustomer(false); setAddCustomerError(null); }}
-                          disabled={addCustomerLoading}
-                          className="px-3 py-1.5 text-sm"
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleAddCustomer}
-                          disabled={addCustomerLoading || !newCustomerName || !newCustomerPortalId}
-                          className="px-3 py-1.5 text-sm"
-                        >
-                          {addCustomerLoading ? 'Adding...' : 'Add'}
-                        </Button>
-                      </div>
-                      {addCustomerError && (
-                        <div className="mt-1 text-xs text-red-600">
-                          {addCustomerError}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )}
                 {visibleCustomers.map((c, index) => (
                   <tr
                     key={c.id}
