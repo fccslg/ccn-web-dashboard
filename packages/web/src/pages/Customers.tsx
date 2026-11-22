@@ -852,38 +852,79 @@ export function Customers() {
                     </td>
                     <td className="px-6 py-4">
                       <Input
+                        ref={(el) => { if (el) el.focus(); }}
                         value={newCustomerPortalId}
                         onChange={(e) => setNewCustomerPortalId(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newCustomerName) handleAddCustomer();
+                          if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); }
+                        }}
+                        onBlur={() => { if (!newCustomerPortalId) setAddCustomerError('Portal ID is required'); else setAddCustomerError(null); }}
                         placeholder="Portal ID (LCOID)"
                         required
-                        className="w-full"
-                        autoFocus
+                        className={`w-full ${!newCustomerPortalId && addCustomerError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                        aria-label="Portal ID (LCOID) - required"
                       />
                     </td>
                     <td className="px-6 py-4">
                       <Input
                         value={newCustomerName}
                         onChange={(e) => setNewCustomerName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddCustomer();
+                          if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); }
+                        }}
+                        onBlur={() => { if (!newCustomerName && addCustomerError) setAddCustomerError('Name is required'); else if (!addCustomerError) setAddCustomerError(null); }}
                         placeholder="Customer Name"
                         required
-                        className="w-full"
+                        className={`w-full ${!newCustomerName && addCustomerError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                        aria-label="Customer Name - required"
                       />
                     </td>
                     <td className="px-6 py-4">
                       <Input
                         value={newCustomerMobile}
                         onChange={(e) => setNewCustomerMobile(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomer(); if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); } }}
                         placeholder="Mobile"
                         className="w-full"
+                        aria-label="Mobile (optional)"
                       />
                     </td>
                     <td className="px-6 py-4">
                       <Input
                         value={newCustomerLocation}
                         onChange={(e) => setNewCustomerLocation(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomer(); if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); } }}
                         placeholder="Location"
                         className="w-full"
+                        aria-label="Location (optional)"
                       />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => { setIsAddingCustomer(false); setAddCustomerError(null); }}
+                          disabled={addCustomerLoading}
+                          className="px-3 py-1.5 text-sm"
+                          onKeyDown={(e) => { if (e.key === 'Escape') { setIsAddingCustomer(false); setAddCustomerError(null); } }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleAddCustomer}
+                          disabled={addCustomerLoading || !newCustomerName || !newCustomerPortalId}
+                          className="px-3 py-1.5 text-sm"
+                        >
+                          {addCustomerLoading ? 'Adding...' : 'Add'}
+                        </Button>
+                      </div>
+                      {addCustomerError && (
+                        <div className="mt-1 text-xs text-red-600">
+                          {addCustomerError}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 justify-end">
